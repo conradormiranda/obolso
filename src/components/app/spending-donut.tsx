@@ -43,7 +43,7 @@ export function SpendingDonut({ slices, totalCents }: { slices: DonutSlice[]; to
       ) : (
         <p className="py-10 text-center text-muted-foreground">Você não possui gastos cadastrados.</p>
       )}
-      <ul className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm" aria-label="Legenda">
+      <ul className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm lg:grid-cols-1" aria-label="Legenda">
         {slices.map((s) => (
           <li key={s.key} className="flex items-center gap-2">
             <span className="size-3 shrink-0 rounded-full" style={{ background: s.color }} aria-hidden="true" />

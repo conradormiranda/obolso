@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { UserRound } from "lucide-react";
+import { CalendarRange, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CATEGORY_KEYS, CATEGORY_SLUG } from "@/lib/domain/categories";
 import { CATEGORY_LABEL, CategoryIcon } from "./category-icon";
@@ -41,6 +41,18 @@ export function AppHeader() {
             );
           })}
         </nav>
+        <Link
+          href="/anual"
+          aria-label="Visão anual"
+          title="Visão anual"
+          aria-current={pathname === "/anual" ? "page" : undefined}
+          className={cn(
+            "ml-1 hidden size-9 items-center justify-center rounded-full sm:flex sm:size-10",
+            pathname === "/anual" ? "bg-primary text-primary-foreground" : "hover:bg-muted",
+          )}
+        >
+          <CalendarRange className="size-5" aria-hidden="true" />
+        </Link>
         <Link
           href="/conta"
           aria-label="Minha conta"

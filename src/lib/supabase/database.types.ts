@@ -139,6 +139,18 @@ export type Database = {
       am_i_member: { Args: Record<string, never>; Returns: boolean };
       create_month_budget: { Args: { p_month: string }; Returns: string };
       copy_previous_month: { Args: { p_month: string }; Returns: number };
+      my_sessions: {
+        Args: Record<string, never>;
+        Returns: {
+          id: string;
+          created_at: string;
+          last_active_at: string;
+          user_agent: string;
+          ip: string;
+          aal: string;
+          is_current: boolean;
+        }[];
+      };
       rate_limit_hit: {
         Args: { p_secret: string; p_scope: string; p_key: string };
         Returns: { allowed: boolean; retry_after_seconds: number }[];

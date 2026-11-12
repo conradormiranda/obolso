@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ChevronRight, Repeat } from "lucide-react";
+import { CalendarRange, ChevronRight, Repeat } from "lucide-react";
+import { ExportLinks } from "@/components/app/export-links";
 import { CopyPreviousMonth } from "@/components/app/copy-previous";
 import { DuplicateAlert } from "@/components/app/duplicate-alert";
 import { MonthSelector } from "@/components/app/month-selector";
@@ -44,6 +45,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       >
         <Repeat className="size-4" aria-hidden="true" /> Recorrentes
       </Link>
+      <Link
+        href={`/anual?ano=${ref.year}`}
+        className="inline-flex h-10 items-center gap-2 rounded-lg border border-border px-3 text-sm font-semibold hover:bg-muted"
+      >
+        <CalendarRange className="size-4" aria-hidden="true" /> Visão anual
+      </Link>
+      {data.budgetId ? <ExportLinks period={param} label={monthLabel(ref)} /> : null}
     </div>
   );
 

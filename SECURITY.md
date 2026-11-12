@@ -46,6 +46,9 @@ Este documento registra **cada decisão de segurança** e o motivo dela. Atualiz
   - O JWT expira em 10 min, com rotação de refresh token.
   - Inatividade de 30 min e máximo absoluto de 7 dias, aplicados **no app** com o cookie assinado `ob_session` (HMAC), vinculado ao `user_id`. Sem o cookie, o app falha fechado e faz logout. Os campos `[auth.sessions]` do Supabase também foram configurados, mas exigem plano Pro.
   - "Sair de todos os dispositivos" = `signOut({ scope: "global" })`, que revoga todos os refresh tokens.
+- **Troca de senha logada** (Configurações): exige a senha atual, conferida num cliente separado que não mexe na sessão e é encerrado em seguida, e o código do autenticador. A senha nova passa pela checagem HIBP. Ao final, as outras sessões são encerradas. Há rate limit por usuário.
+- **Trocar autenticador**: exige o código atual. Remove o fator e obriga a reconfigurar, o que invalida os códigos de recuperação antigos.
+- **Sessões ativas**: a função `my_sessions()` (`security definer`, exige `aal2`) devolve só as sessões do próprio usuário (testado).
 - **Alerta de login**: depois do MFA, o dispositivo é identificado por um cookie aleatório `ob_device` (httpOnly, 400 dias) e guardado como `sha256(user_id:device_id)` em `known_devices`. Dispositivo novo gera um e-mail (Resend) com data, navegador e IP.
 
 ## 3. Autorização e dados
@@ -72,6 +75,7 @@ Este documento registra **cada decisão de segurança** e o motivo dela. Atualiz
   - `'unsafe-eval'` só existe em `next dev`.
 - **Cabeçalhos estáticos** (`next.config.ts`): HSTS de 2 anos com `includeSubDomains; preload`, `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` (câmera, microfone, geolocalização, pagamento, USB etc. desativados), COOP/CORP `same-origin`, `X-Robots-Tag: noindex` e sem `X-Powered-By`.
 - **Indexação**: `robots.txt` com `Disallow: /`, meta `noindex, nofollow` em todas as páginas e `X-Robots-Tag`.
+- **Exportação** (`GET /exportar`): leitura apenas, exige sessão `aal2` de membro, dados via RLS, resposta `Cache-Control: private, no-store` e `Content-Disposition: attachment`. O CSV tem proteção contra *formula injection* (prefixo `'` em células que começam com `= + - @`). O XLSX é gerado no servidor com XML escapado; valores monetários saem de inteiros, sem float.
 - **Nada no navegador**: nenhum dado financeiro em `localStorage`/`sessionStorage`. Logs do servidor só registram nome de evento (`logSecurityEvent`), sem e-mail, IP, valores ou tokens.
 - **Erros**: `error.tsx`, `global-error.tsx` e `not-found.tsx` são genéricos e o Next não envia stack traces em produção. Source maps de produção estão desativados.
 - **Todas as páginas são dinâmicas** (`force-dynamic`): nenhum HTML com dados privados fica em cache estático.

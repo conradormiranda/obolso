@@ -391,6 +391,34 @@ describe.skipIf(!shouldRun)("segurança do banco (Supabase dev)", () => {
   });
 
   // -------------------------------------------------------------------------
+  describe("Fase 4: sessões e perfil", () => {
+    it("my_sessions só com aal2 e só as sessões do próprio usuário", async () => {
+      const aal1 = await signInAal1(fx.pai);
+      expect((await aal1.rpc("my_sessions")).error).not.toBeNull();
+      const intruso = await signInAal2(fx.intruso);
+      expect((await intruso.rpc("my_sessions")).error).not.toBeNull();
+
+      const pai = await signInAal2(fx.pai);
+      const mae = await signInAal2(fx.mae);
+      const paiSessions = (await pai.rpc("my_sessions")).data ?? [];
+      const maeSessions = (await mae.rpc("my_sessions")).data ?? [];
+      expect(paiSessions.some((s) => s.is_current)).toBe(true);
+      const paiIds = new Set(paiSessions.map((s) => s.id));
+      expect(maeSessions.every((s) => !paiIds.has(s.id))).toBe(true);
+    });
+
+    it("membro só altera o próprio nome; outros campos e outros membros não", async () => {
+      const pai = await signInAal2(fx.pai);
+      const other = await pai.from("household_members").update({ display_name: "hackeado" }).eq("user_id", fx.mae.id).select();
+      expect(other.data ?? []).toHaveLength(0);
+      const role = await pai.from("household_members").update({ role: "mae" } as never).eq("user_id", fx.pai.id);
+      expect(role.error).not.toBeNull();
+      const ok = await pai.from("household_members").update({ display_name: "Pai Teste" }).eq("user_id", fx.pai.id).select();
+      expect(ok.data).toHaveLength(1);
+    });
+  });
+
+  // -------------------------------------------------------------------------
   describe("códigos de recuperação do MFA", () => {
     it("código válido remove o autenticador uma única vez; código errado não", async () => {
       const aal2 = await signInAal2(fx.pai);

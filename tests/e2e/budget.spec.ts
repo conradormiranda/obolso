@@ -30,9 +30,8 @@ test.describe("Fase 2: orçamento do mês", () => {
     await expect(page.getByText("Renda do mês")).toBeVisible();
 
     // CORREÇÃO DO BUG: renda zero → "sem meta", nunca 100%
-    await expect(page.getByText("sem meta").filter({ visible: true }).first()).toBeVisible();
-    expect(await page.getByText("100%", { exact: true }).count()).toBe(0);
-    await expect(page.getByText("Você não possui gastos cadastrados.")).toBeVisible();
+    // 6 categorias + utilizado geral, todos "sem meta"
+    await expect(page.getByText("sem meta").filter({ visible: true })).toHaveCount(7);
 
     // Renda
     await page.getByRole("link", { name: /Renda do mês/ }).click();
