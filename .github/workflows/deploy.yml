@@ -1,0 +1,40 @@
+name: Deploy (produção)
+
+# Deploy SOMENTE depois do CI verde na main. O deploy automático da integração
+# Git da Vercel fica desligado (vercel.json → git.deploymentEnabled = false).
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # As variáveis do app vêm do painel da Vercel (vercel pull), nunca do repositório.
+      - run: npx --yes vercel@65.14.0 pull --yes --environment=production --token="${{ secrets.VERCEL_TOKEN }}"
+      - run: npx --yes vercel@65.14.0 build --prod --token="${{ secrets.VERCEL_TOKEN }}"
+      - run: npx --yes vercel@65.14.0 deploy --prebuilt --prod --token="${{ secrets.VERCEL_TOKEN }}"

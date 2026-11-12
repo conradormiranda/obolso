@@ -1,0 +1,64 @@
+name: Backup diário (produção)
+
+# pg_dump → gzip → age (chave pública do repositório) → Cloudflare R2 (bucket privado).
+# A chave privada NÃO existe no GitHub: só o dono consegue descriptografar.
+on:
+  schedule:
+    - cron: "17 6 * * *" # 03:17 em Brasília
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup-production
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    environment: backup
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Instalar postgresql-client 17 e age
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-17 age
+
+      - name: Dump, compressão e criptografia
+        env:
+          DB_URL: ${{ secrets.PROD_DB_URL }}
+        run: |
+          set -euo pipefail
+          umask 077
+          work="$(mktemp -d)"
+          stamp="$(date -u +%Y%m%dT%H%M%SZ)"
+          scripts/backup/dump.sh "$work/dump.sql"
+          {
+            echo "### Backup $stamp"
+            echo '```'
+            scripts/backup/counts.sh "$work/dump.sql"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          gzip -9 "$work/dump.sql"
+          age -R backup/age-recipients.txt -o "obolso-$stamp.sql.gz.age" "$work/dump.sql.gz"
+          shred -u "$work/dump.sql.gz"
+          echo "ARQUIVO=obolso-$stamp.sql.gz.age" >> "$GITHUB_ENV"
+
+      - name: Enviar para o R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_ENDPOINT: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          aws s3 cp "$ARQUIVO" "s3://$R2_BUCKET/diario/$ARQUIVO" --endpoint-url "$R2_ENDPOINT" --only-show-errors
+          echo "Enviado: diario/$ARQUIVO" >> "$GITHUB_STEP_SUMMARY"

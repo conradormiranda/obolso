@@ -1,0 +1,95 @@
+name: Ensaio de restauração (DEV)
+
+# Executa o procedimento COMPLETO de desastre contra o projeto Supabase de DEV:
+# dump → gzip → age (chave de DEV) → descriptografa → APAGA os dados → restaura →
+# compara contagens → roda os testes de segurança. Nunca toca na produção.
+on:
+  workflow_dispatch:
+    inputs:
+      confirmar:
+        description: 'Digite APAGAR-DEV para confirmar que os dados do projeto de dev serão apagados e restaurados'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  drill:
+    if: inputs.confirmar == 'APAGAR-DEV'
+    runs-on: ubuntu-latest
+    environment: dev
+    timeout-minutes: 30
+    env:
+      DEV_REF: ${{ secrets.TEST_SUPABASE_PROJECT_REF }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Instalar postgresql-client 17 e age
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-17 age
+
+      - name: Backup do dev (igual ao de produção, com a chave de DEV)
+        env:
+          DB_URL: ${{ secrets.DEV_DB_URL }}
+        run: |
+          set -euo pipefail
+          umask 077
+          case "$DB_URL" in *"$DEV_REF"*) ;; *) echo "DEV_DB_URL não é do projeto de dev" >&2; exit 1 ;; esac
+          scripts/backup/dump.sh antes.sql
+          scripts/backup/counts.sh antes.sql > antes.txt
+          gzip -9 -c antes.sql | age -R backup/age-recipients-dev.txt -o backup.sql.gz.age
+          shred -u antes.sql
+
+      - name: Descriptografar com a chave privada de DEV
+        env:
+          DEV_AGE_IDENTITY: ${{ secrets.DEV_AGE_IDENTITY }}
+        run: |
+          set -euo pipefail
+          umask 077
+          printf '%s\n' "$DEV_AGE_IDENTITY" > key.txt
+          age -d -i key.txt backup.sql.gz.age | gunzip > restaurar.sql
+          shred -u key.txt
+
+      - name: Simular perda total (apagar os dados do dev)
+        env:
+          DB_URL: ${{ secrets.DEV_DB_URL }}
+        run: /usr/lib/postgresql/17/bin/psql "$DB_URL" --no-psqlrc -v ON_ERROR_STOP=1 -f scripts/backup/wipe-dev.sql
+
+      - name: Restaurar
+        env:
+          TARGET_DB_URL: ${{ secrets.DEV_DB_URL }}
+        run: CONFIRM_REF="$DEV_REF" scripts/backup/restore.sh restaurar.sql
+
+      - name: Comparar contagens antes × depois
+        env:
+          DB_URL: ${{ secrets.DEV_DB_URL }}
+        run: |
+          set -euo pipefail
+          scripts/backup/dump.sh depois.sql
+          scripts/backup/counts.sh depois.sql > depois.txt
+          shred -u depois.sql restaurar.sql
+          { echo '### Contagens (antes | depois)'; echo '```'; paste antes.txt depois.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          diff antes.txt depois.txt
+          echo "Contagens idênticas." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: App funcionando após a restauração (testes de segurança)
+        env:
+          REQUIRE_SECURITY_TESTS: "1"
+          SUPABASE_URL: ${{ secrets.TEST_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.TEST_SUPABASE_ANON_KEY }}
+          TEST_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TEST_SUPABASE_SERVICE_ROLE_KEY }}
+          TEST_SUPABASE_PROJECT_REF: ${{ secrets.TEST_SUPABASE_PROJECT_REF }}
+          RATE_LIMIT_SECRET: ${{ secrets.TEST_RATE_LIMIT_SECRET }}
+        run: |
+          npm ci
+          npm run test:security

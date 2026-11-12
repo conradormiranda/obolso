@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="pt-BR">
+  <body style="margin:0;padding:24px;background:#222222;color:#F2F2F2;font-family:Arial,Helvetica,sans-serif">
+    <div style="max-width:480px;margin:0 auto;background:#2A2A2A;border-radius:12px;padding:24px">
+      <h1 style="margin:0 0 16px;color:#D4AF6A;font-size:22px">O Bolso</h1>
+      <p style="font-size:15px;line-height:1.5">Recebemos um pedido para redefinir a sua senha.</p>
+      <p style="margin:24px 0">
+        <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery"
+           style="display:inline-block;background:#D4AF6A;color:#1A1A1A;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:8px">
+          Redefinir minha senha
+        </a>
+      </p>
+      <p style="font-size:13px;color:#B3B3B3;line-height:1.5">
+        O link vale por pouco tempo. Para trocar a senha você também vai precisar do aplicativo autenticador.
+        Se não foi você, ignore este e-mail.
+      </p>
+    </div>
+  </body>
+</html>

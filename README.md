@@ -6,6 +6,9 @@ Stack: Next.js 15 (App Router) · Supabase (Postgres, Auth, RLS) · Tailwind + s
 
 - Segurança: veja [SECURITY.md](SECURITY.md).
 - Configuração do Supabase: veja [docs/SUPABASE_SETUP.md](docs/SUPABASE_SETUP.md).
+- Publicação e operação: veja [docs/OPERACAO.md](docs/OPERACAO.md).
+- Backup e restauração: veja [docs/BACKUP.md](docs/BACKUP.md).
+- Checklist final de aceite: veja [docs/CHECKLIST.md](docs/CHECKLIST.md).
 
 ## Desenvolvimento
 
@@ -34,6 +37,7 @@ Sem `.env.test.local`, os testes que dependem do Supabase são pulados localment
 | `TEST_SUPABASE_SERVICE_ROLE_KEY` | fixtures de teste (somente dev) |
 | `TEST_SUPABASE_DB_PASSWORD`, `SUPABASE_ACCESS_TOKEN` | `supabase db push` no dev |
 | `TEST_RATE_LIMIT_SECRET`, `TEST_SESSION_SECRET` | segredos do app nos testes |
+| `DEV_DB_URL`, `DEV_AGE_IDENTITY` (environment `dev`) | ensaio de restauração |
 
 ## Fases
 
