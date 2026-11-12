@@ -30,18 +30,18 @@ test.describe("login, MFA e sessão", () => {
   test("senha errada mostra erro genérico", async ({ page }) => {
     if (!fx) return;
     await fillLogin(page, fx.pai.email, "senha-errada-123456");
-    await expect(page.getByRole("alert")).toHaveText("E-mail ou senha inválidos.");
+    await expect(page.locator("form [role=alert]")).toHaveText("E-mail ou senha inválidos.");
   });
 
   test("e-mail inexistente mostra exatamente o mesmo erro", async ({ page }) => {
     await fillLogin(page, "ninguem-aqui@example.com", "senha-errada-123456");
-    await expect(page.getByRole("alert")).toHaveText("E-mail ou senha inválidos.");
+    await expect(page.locator("form [role=alert]")).toHaveText("E-mail ou senha inválidos.");
   });
 
   test("usuário fora da allowlist não entra (mesma mensagem)", async ({ page }) => {
     if (!fx) return;
     await fillLogin(page, fx.intruso.email, fx.intruso.password);
-    await expect(page.getByRole("alert")).toHaveText("E-mail ou senha inválidos.");
+    await expect(page.locator("form [role=alert]")).toHaveText("E-mail ou senha inválidos.");
   });
 
   test("primeiro acesso: configura MFA, vê códigos uma vez, entra e sai de todos os dispositivos", async ({ page }) => {
@@ -61,6 +61,12 @@ test.describe("login, MFA e sessão", () => {
     await page.getByLabel("Código de 6 dígitos").fill(totpNow(secret));
     await page.getByRole("button", { name: "Ativar" }).click();
 
+    // Sem códigos de recuperação, o app exige gerá-los antes de liberar o início.
+    await page.waitForURL("**/mfa/codigos");
+    await page.goto("/");
+    await page.waitForURL("**/mfa/codigos");
+    await page.getByRole("button", { name: "Gerar códigos de recuperação" }).click();
+
     const codes = page.locator("ol li");
     await expect(codes).toHaveCount(10);
     await expect(codes.first()).toHaveText(/^[A-Z0-9]{5}-[A-Z0-9]{5}$/);
@@ -70,9 +76,15 @@ test.describe("login, MFA e sessão", () => {
     await page.waitForURL((u) => u.pathname === "/");
     await expect(page.getByText("Olá, Mãe Teste.")).toBeVisible();
 
-    // códigos não podem ser exibidos de novo
+    // MFA já configurado: tela de configuração volta para o início
     await page.goto("/mfa/configurar");
     await page.waitForURL((u) => u.pathname === "/");
+    // códigos não são exibidos de novo; só é possível gerar novos
+    await page.goto("/mfa/codigos");
+    await expect(page.getByText("Você tem 10 códigos de recuperação válidos.", { exact: false })).toBeVisible();
+    await expect(page.locator("ol li")).toHaveCount(0);
+
+    await page.goto("/");
 
     await page.getByRole("button", { name: "Sair de todos os dispositivos" }).click();
     await page.waitForURL("**/login");

@@ -1,57 +1,16 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field, FormMessage, SubmitButton, inputClass } from "@/components/auth/form-bits";
-import {
-  confirmEnrollAction,
-  startEnrollAction,
-  type EnrollConfirmState,
-  type EnrollStart,
-} from "@/lib/actions/auth";
-
-const initialConfirm: EnrollConfirmState = { status: "idle" };
+import { confirmEnrollAction, startEnrollAction, type EnrollStart } from "@/lib/actions/auth";
+import { idleState } from "@/lib/actions/form-state";
 
 export function Enroll() {
   const [start, setStart] = useState<EnrollStart | null>(null);
   const [starting, startTransition] = useTransition();
-  const [confirm, confirmAction] = useActionState(confirmEnrollAction, initialConfirm);
-  const [saved, setSaved] = useState(false);
-
-  if (confirm.status === "codes") {
-    return (
-      <div className="space-y-4">
-        <p className="text-sm">
-          Autenticador configurado. Guarde estes <strong>códigos de recuperação</strong> em um lugar seguro (por
-          exemplo, no seu gerenciador de senhas). Eles <strong>não serão mostrados de novo</strong>. Cada um vale uma
-          única vez.
-        </p>
-        <ol className="grid grid-cols-2 gap-2 rounded-lg bg-muted p-3 font-mono text-sm tabular-nums">
-          {confirm.codes.map((c) => (
-            <li key={c}>{c}</li>
-          ))}
-        </ol>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={saved} onChange={(e) => setSaved(e.target.checked)} className="size-4" />
-          Guardei os códigos em local seguro
-        </label>
-        {saved ? (
-          <Link
-            href="/"
-            className="flex h-11 w-full items-center justify-center rounded-lg bg-primary font-semibold text-primary-foreground"
-          >
-            Continuar
-          </Link>
-        ) : (
-          <Button className="h-11 w-full" disabled>
-            Continuar
-          </Button>
-        )}
-      </div>
-    );
-  }
+  const [confirm, confirmAction] = useActionState(confirmEnrollAction, idleState);
 
   if (!start || start.status === "error") {
     return (

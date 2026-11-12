@@ -37,7 +37,7 @@ Sem `.env.test.local`, os testes que dependem do Supabase são pulados localment
 
 ## Fases
 
-1. Fundação e segurança (em revisão)
+1. ✅ Fundação e segurança
 2. Núcleo do orçamento
 3. Usabilidade
 4. Análise

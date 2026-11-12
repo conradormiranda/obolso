@@ -62,7 +62,7 @@ describe.skipIf(!shouldRun)("segurança do banco (Supabase dev)", () => {
       expect(error).not.toBeNull();
     });
 
-    it("hook bloqueia criação de usuário fora da allowlist até pela API admin", async () => {
+    it("banco bloqueia criação de usuário fora da allowlist até pela API admin", async () => {
       const email = `fora-${randomBytes(6).toString("hex")}@example.com`;
       const { data, error } = await adminClient().auth.admin.createUser({ email, password: "x".repeat(20), email_confirm: true });
       expect(error).not.toBeNull();
@@ -251,6 +251,35 @@ describe.skipIf(!shouldRun)("segurança do banco (Supabase dev)", () => {
       // nem a service_role apaga o log
       const adminDel = await adminClient().from("audit_log").delete().eq("id", firstId);
       expect(adminDel.error).not.toBeNull();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  describe("códigos de recuperação do MFA", () => {
+    it("código válido remove o autenticador uma única vez; código errado não", async () => {
+      const aal2 = await signInAal2(fx.pai);
+      const { data: codes, error } = await aal2.rpc("mfa_recovery_codes_generate");
+      expect(error).toBeNull();
+      expect(codes).toHaveLength(10);
+      const code = codes?.[0] ?? "";
+
+      const admin = adminClient();
+      const factorsBefore = await admin.auth.admin.mfa.listFactors({ userId: fx.pai.id });
+      expect(factorsBefore.data?.factors.length).toBeGreaterThan(0);
+
+      // Nova sessão só com senha (aal1), como quem perdeu o celular.
+      const aal1 = await signInAal1(fx.pai);
+      expect((await aal1.rpc("mfa_recovery_code_consume", { p_code: "AAAAA-BBBBB" })).data).toBe(false);
+      expect((await aal1.rpc("mfa_recovery_code_consume", { p_code: code })).data).toBe(true);
+      expect((await aal1.rpc("mfa_recovery_code_consume", { p_code: code })).data).toBe(false);
+
+      const factorsAfter = await admin.auth.admin.mfa.listFactors({ userId: fx.pai.id });
+      expect(factorsAfter.data?.factors ?? []).toHaveLength(0);
+    });
+
+    it("intruso não consegue consumir códigos", async () => {
+      const client = await signInAal1(fx.intruso);
+      expect((await client.rpc("mfa_recovery_code_consume", { p_code: "AAAAA-BBBBB" })).error).not.toBeNull();
     });
   });
 

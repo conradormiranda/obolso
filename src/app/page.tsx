@@ -8,6 +8,7 @@ import { UnauthorizedError, requireMember } from "@/lib/server/auth";
  */
 export default async function HomePage() {
   let displayName = "";
+  let codesRemaining = 0;
   try {
     const { supabase, user } = await requireMember();
     const { data } = await supabase
@@ -16,10 +17,14 @@ export default async function HomePage() {
       .eq("user_id", user.id)
       .maybeSingle();
     displayName = data?.display_name ?? "";
+    const { data: remaining } = await supabase.rpc("mfa_recovery_codes_remaining");
+    codesRemaining = remaining ?? 0;
   } catch (e) {
     if (e instanceof UnauthorizedError) redirect("/login");
     throw e;
   }
+  // Todo membro precisa ter códigos de recuperação.
+  if (codesRemaining === 0) redirect("/mfa/codigos");
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-6 px-4 py-10">

@@ -3,9 +3,12 @@ import Link from "next/link";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { RecoverForm } from "./recover-form";
 
+import { guardMfaVerifyPage } from "@/lib/server/mfa";
+
 export const metadata: Metadata = { title: "Código de recuperação" };
 
-export default function MfaRecoverPage() {
+export default async function MfaRecoverPage() {
+  await guardMfaVerifyPage();
   return (
     <AuthShell
       title="Código de recuperação"

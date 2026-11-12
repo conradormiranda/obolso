@@ -7,7 +7,7 @@ Este documento registra **cada decisão de segurança** e o motivo dela. Atualiz
 
 | Ameaça | Mitigação principal |
 |---|---|
-| Alguém cria conta e acessa os dados | Cadastro desativado + hook `before_user_created` + allowlist em 3 camadas |
+| Alguém cria conta e acessa os dados | Cadastro desativado + trigger em `auth.users` + hook `before_user_created` + allowlist em 3 camadas |
 | Senha vazada ou adivinhada | MFA TOTP obrigatório, rate limit progressivo, Turnstile, checagem HIBP |
 | Sessão roubada | Cookies `httpOnly`/`Secure`/`SameSite=Lax`, JWT de 10 min, expiração de 30 min por inatividade e de 7 dias no total, "sair de todos os dispositivos" |
 | Acesso direto à API do Supabase com a anon key | RLS forçado em todas as tabelas, com exigência de `aal2` e de pertencer ao household. O navegador nem recebe a anon key |
@@ -20,7 +20,7 @@ Este documento registra **cada decisão de segurança** e o motivo dela. Atualiz
 
 - **Cadastro desativado** em 4 camadas:
   1. `enable_signup = false` no Supabase Auth.
-  2. Hook `public.hook_before_user_created` (Postgres) rejeita a criação de qualquer usuário cujo e-mail não esteja em `app_private.allowed_emails`, **inclusive pela API admin**.
+  2. Trigger `obolso_enforce_allowed_email` (`BEFORE INSERT OR UPDATE OF email` em `auth.users`) recusa qualquer e-mail fora de `app_private.allowed_emails`, venha de signup, convite, OAuth ou **API admin** (testado). O hook `before_user_created` também está ativo, mas os testes mostraram que ele **não** cobre a API admin; por isso existe o trigger.
   3. Nenhuma rota, botão ou formulário de cadastro no app (testado no E2E).
   4. Mesmo que um usuário fosse criado, ele não está em `household_members`: o middleware faz logout e o RLS não entrega nada.
 - **Criação dos 2 usuários**: `scripts/setup-household.ts`, rodado localmente uma única vez com a `service_role` passada só como variável do shell. A senha inicial é aleatória e descartada; cada pessoa define a sua pelo fluxo de recuperação.
@@ -29,7 +29,8 @@ Este documento registra **cada decisão de segurança** e o motivo dela. Atualiz
   2. Middleware: `am_i_member()` a cada requisição. Quem não é membro sofre logout forçado e vai para `/acesso-negado`.
   3. RLS: toda política chama `app_private.is_member_aal2(household_id)`.
 - **MFA TOTP obrigatório**: sem `aal2`, o middleware só libera `/mfa`, `/mfa/configurar` e `/mfa/recuperar`. O RLS também exige `aal2`, então uma sessão `aal1` não lê nada mesmo chamando a API diretamente (testado).
-- **Códigos de recuperação**: 10 códigos (~49 bits cada), gerados no banco (`gen_random_bytes`) e guardados só como SHA-256 em `app_private`. São exibidos uma única vez. Ao usar um código, o fator TOTP é removido, o usuário configura um novo e recebe um e-mail de alerta.
+- **Códigos de recuperação**: 10 códigos (~49 bits cada), gerados no banco (`gen_random_bytes`) e guardados só como SHA-256 em `app_private`. São gerados na página `/mfa/codigos` (exige `aal2`) e exibidos uma única vez. A página inicial obriga quem não tem códigos a gerá-los. Cadastrar um autenticador novo invalida os códigos anteriores. Ao usar um código, o fator TOTP é removido (testado no Supabase de dev), o usuário configura um novo e recebe um e-mail de alerta.
+- **Redirects de Server Actions** renderizam o destino sem passar pelo middleware. Por isso as páginas de MFA e de nova senha repetem a mesma regra de acesso no servidor (`src/lib/server/mfa.ts`), e a página inicial usa `requireMember` (aal2).
 - **Senha**: mínimo de 12 caracteres, máximo de 72 bytes (limite do bcrypt) e nenhuma regra de composição. O app checa no **Have I Been Pwned por k-anonymity**: só os 5 primeiros caracteres do SHA-1 saem do servidor. Se o HIBP estiver fora do ar, a troca é recusada (falha fechada). A proteção de senha vazada nativa do Supabase exige plano Pro, por isso a checagem é feita no app.
 - **Login**: a mensagem é sempre "E-mail ou senha inválidos.", inclusive para quem está fora da allowlist. A resposta tem tempo mínimo de 700 ms para reduzir o vazamento por timing.
 - **Turnstile**: validado no servidor (`siteverify`), conferindo `hostname` e `action`. A chave de teste da Cloudflare só é aceita quando `APP_ORIGIN` é localhost. **O captcha nativo do Supabase Auth fica DESLIGADO**: o token do Turnstile é de uso único e já é consumido na validação do app.
@@ -41,7 +42,7 @@ Este documento registra **cada decisão de segurança** e o motivo dela. Atualiz
   - Falha fechada: se o banco der erro, a tentativa é negada.
   - Soma-se ao rate limit nativo do Supabase Auth.
 - **Recuperação de senha**: o e-mail só é enviado se o endereço estiver em `ALLOWED_EMAILS`. A resposta é sempre idêntica e tem tempo mínimo de 1,2 s. O link leva a uma página com botão "Continuar" (POST), para que scanners de e-mail não consumam o token. Trocar a senha exige ter passado pelo **MFA** (`aal2`) e ter um cookie assinado de redefinição válido por 15 min. Depois da troca, as outras sessões são encerradas.
-- **Sessão**:
+- **Sessão** (o plano Free do Supabase recusa `[auth.sessions]`; a seção fica comentada no `config.toml` e os limites valem só pelo app):
   - O JWT expira em 10 min, com rotação de refresh token.
   - Inatividade de 30 min e máximo absoluto de 7 dias, aplicados **no app** com o cookie assinado `ob_session` (HMAC), vinculado ao `user_id`. Sem o cookie, o app falha fechado e faz logout. Os campos `[auth.sessions]` do Supabase também foram configurados, mas exigem plano Pro.
   - "Sair de todos os dispositivos" = `signOut({ scope: "global" })`, que revoga todos os refresh tokens.
@@ -89,7 +90,7 @@ Este documento registra **cada decisão de segurança** e o motivo dela. Atualiz
 ## 6. Riscos remanescentes conhecidos
 
 1. **Janela antes do primeiro MFA**: quem tiver a senha antes do dono configurar o TOTP pode registrar o próprio autenticador. Mitigação: o setup cria os usuários com senha aleatória descartada. Cada pessoa define a senha pelo e-mail e configura o MFA na mesma sessão.
-2. **Consumo de código de recuperação** depende de `delete from auth.mfa_factors` executado pela função `security definer`. Isso precisa ser validado no projeto de dev; se a Supabase restringir esse DELETE, a alternativa é um procedimento manual pelo painel.
+2. **Consumo de código de recuperação** depende de `delete from auth.mfa_factors` executado pela função `security definer`. Validado no projeto de dev em 12/11/2026; se a Supabase restringir esse DELETE no futuro, o teste de segurança acusa.
 3. **IP do cliente** vem de `x-forwarded-for`, que é confiável atrás da Vercel. Fora dela, o rate limit por IP pode ser contornado; o limite por e-mail e por usuário continua valendo.
 4. **Abuso de armazenamento do rate limit**: mitigado porque a RPC exige o segredo e há limpeza horária via `pg_cron`.
 5. **Deploy antes do CI**: a integração Git da Vercel faz deploy sem esperar o CI. Na Fase 5 o deploy passará a ser disparado pelo GitHub Actions somente após o CI verde.

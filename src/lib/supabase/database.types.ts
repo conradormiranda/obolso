@@ -144,6 +144,7 @@ export type Database = {
       mfa_recovery_codes_generate: { Args: Record<string, never>; Returns: string[] };
       mfa_recovery_code_consume: { Args: { p_code: string }; Returns: boolean };
       mfa_recovery_codes_remaining: { Args: Record<string, never>; Returns: number };
+      mfa_recovery_codes_clear: { Args: Record<string, never>; Returns: undefined };
       admin_allow_email: { Args: { p_email: string }; Returns: undefined };
       admin_set_rate_limit_secret: { Args: { p_secret: string }; Returns: undefined };
       admin_reset_rate_limits: { Args: Record<string, never>; Returns: undefined };

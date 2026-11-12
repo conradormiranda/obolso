@@ -4,9 +4,12 @@ import { AuthShell } from "@/components/auth/auth-shell";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { VerifyForm } from "./verify-form";
 
+import { guardMfaVerifyPage } from "@/lib/server/mfa";
+
 export const metadata: Metadata = { title: "Verificação em duas etapas" };
 
-export default function MfaPage() {
+export default async function MfaPage() {
+  await guardMfaVerifyPage();
   return (
     <AuthShell title="Verificação em duas etapas" description="Abra o aplicativo autenticador e digite o código.">
       <VerifyForm />

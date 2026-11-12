@@ -12,6 +12,7 @@ import { assertSameOrigin, atLeast, clientIp } from "@/lib/server/request";
 import { clearAppCookies, onLoginCompleted, startAppSession, startPasswordReset } from "@/lib/server/session";
 import { sendRecoveryCodeUsedAlert } from "@/lib/server/email";
 import { verifyTurnstile } from "@/lib/server/turnstile";
+import { mfaLandingPath } from "@/lib/server/mfa";
 import { createClient } from "@/lib/supabase/server";
 import {
   loginSchema,
@@ -86,7 +87,7 @@ export async function loginAction(_prev: FormState, formData: FormData): Promise
 
       await startAppSession(data.user.id);
       logSecurityEvent("login_password_ok");
-      return { redirect: "/mfa" };
+      return { redirect: await mfaLandingPath(supabase) };
     })(),
   );
   return finish(outcome);
@@ -124,7 +125,9 @@ export async function verifyMfaAction(_prev: FormState, formData: FormData): Pro
       }
       logSecurityEvent("mfa_ok");
       await onLoginCompleted(supabase, user);
-      outcome = { redirect: "/" };
+      const store = await cookies();
+      const pending = await isPwResetValid(serverEnv().SESSION_SECRET, store.get(PWRESET_COOKIE)?.value, user.id, Date.now());
+      outcome = { redirect: pending ? "/redefinir-senha" : "/" };
     }
   } catch (e) {
     if (e instanceof UnauthorizedError) outcome = { redirect: "/login" };
@@ -164,10 +167,9 @@ export async function startEnrollAction(): Promise<EnrollStart> {
   }
 }
 
-export type EnrollConfirmState = FormState | { status: "codes"; codes: string[] };
-
-export async function confirmEnrollAction(_prev: EnrollConfirmState, formData: FormData): Promise<EnrollConfirmState> {
+export async function confirmEnrollAction(_prev: FormState, formData: FormData): Promise<FormState> {
   if (!(await guardOrigin())) return { status: "error", message: MSG.genericError };
+  let outcome: Outcome;
   try {
     const parsed = mfaEnrollVerifySchema.safeParse({ factorId: formData.get("factorId"), code: formData.get("code") });
     if (!parsed.success) return { status: "error", message: MSG.invalidCode };
@@ -182,12 +184,30 @@ export async function confirmEnrollAction(_prev: EnrollConfirmState, formData: F
     });
     if (error) return { status: "error", message: MSG.invalidCode };
 
-    const { data: codes, error: codesError } = await supabase.rpc("mfa_recovery_codes_generate");
-    if (codesError || !codes) return { status: "error", message: MSG.genericError };
-
     logSecurityEvent("mfa_enrolled");
+    // Autenticador novo invalida os códigos de recuperação anteriores.
+    await supabase.rpc("mfa_recovery_codes_clear");
     await onLoginCompleted(supabase, user);
-    return { status: "codes", codes };
+    // Os códigos de recuperação são gerados em página própria (aal2).
+    outcome = { redirect: "/mfa/codigos" };
+  } catch (e) {
+    if (e instanceof UnauthorizedError) outcome = { redirect: "/login" };
+    else return { status: "error", message: MSG.genericError };
+  }
+  return finish(outcome);
+}
+
+export type RecoveryCodesResult = { status: "ok"; codes: string[] } | { status: "error"; message: string };
+
+/** Gera (ou regenera) os 10 códigos de recuperação. Exige aal2. Exibidos uma única vez. */
+export async function generateRecoveryCodesAction(): Promise<RecoveryCodesResult> {
+  if (!(await guardOrigin())) return { status: "error", message: MSG.genericError };
+  try {
+    const { supabase } = await requireMember();
+    const { data, error } = await supabase.rpc("mfa_recovery_codes_generate");
+    if (error || !data || data.length !== 10) return { status: "error", message: MSG.genericError };
+    logSecurityEvent("mfa_recovery_codes_generated");
+    return { status: "ok", codes: data };
   } catch {
     return { status: "error", message: MSG.genericError };
   }
@@ -298,7 +318,7 @@ export async function confirmRecoveryLinkAction(_prev: FormState, formData: Form
     await startPasswordReset(data.user.id);
     logSecurityEvent("recovery_link_ok");
     // Precisa passar pelo MFA antes de trocar a senha.
-    outcome = { redirect: "/mfa" };
+    outcome = { redirect: await mfaLandingPath(supabase) };
   }
   return finish(outcome);
 }
