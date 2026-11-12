@@ -1,6 +1,6 @@
 import { expect, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
-import { deleteAllFactors, totpNow, type Fixtures, type TestUser } from "../support/fixtures";
+import { adminClient, deleteAllFactors, hasTestEnv, totpNow, type Fixtures, type TestUser } from "../support/fixtures";
 
 export function loadFixtures(): Fixtures | null {
   try {
@@ -10,7 +10,13 @@ export function loadFixtures(): Fixtures | null {
   }
 }
 
-export async function fillLogin(page: Page, email: string, password: string) {
+/** Os testes fazem vários logins do mesmo IP; zera o rate limit para não se bloquearem. */
+export async function resetRateLimits() {
+  if (hasTestEnv()) await adminClient().rpc("admin_reset_rate_limits");
+}
+
+export async function fillLogin(page: Page, email: string, password: string, opts: { keepRateLimit?: boolean } = {}) {
+  if (!opts.keepRateLimit) await resetRateLimits();
   await page.goto("/login");
   await page.getByLabel("E-mail").fill(email);
   await page.getByLabel("Senha").fill(password);

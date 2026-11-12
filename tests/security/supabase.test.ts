@@ -295,6 +295,102 @@ describe.skipIf(!shouldRun)("segurança do banco (Supabase dev)", () => {
   });
 
   // -------------------------------------------------------------------------
+  describe("Fase 3: recorrentes e cópia do mês anterior", () => {
+    const createdTemplates: string[] = [];
+    afterAll(async () => {
+      if (createdTemplates.length) await adminClient().from("recurring_templates").delete().in("id", createdTemplates);
+    });
+
+    it("mês novo gera lançamentos só dos recorrentes ativos e vigentes; dia limitado ao fim do mês", async () => {
+      const client = await signInAal2(fx.pai);
+      const { data: cats } = await client.from("categories").select("id, key");
+      const catId = cats?.find((c) => c.key === "custos_fixos")?.id ?? "";
+      const year = 2100; // único ano livre de outros testes
+      const tag = randomBytes(4).toString("hex");
+      const tpl = (description: string, extra: Record<string, unknown>) => ({
+        category_id: catId,
+        description: `${description} ${tag}`,
+        amount_cents: 1000,
+        paid_by: "pai" as const,
+        payment_method: "boleto" as const,
+        starts_on: `${year}-01-31`,
+        ends_on: null,
+        active: true,
+        ...extra,
+      });
+      const { data: rows, error } = await client
+        .from("recurring_templates")
+        .insert([
+          tpl("Ativo", {}),
+          tpl("Pausado", { active: false }),
+          tpl("Encerrado", { ends_on: `${year}-01-31` }),
+          tpl("Futuro", { starts_on: `${year}-03-01` }),
+        ])
+        .select("id");
+      expect(error).toBeNull();
+      createdTemplates.push(...(rows ?? []).map((r) => r.id));
+
+      // limpa fevereiro/2100 se sobrou de execução anterior
+      const admin = adminClient();
+      const { data: old } = await admin.from("monthly_budgets").select("id").eq("month", `${year}-02-01`).maybeSingle();
+      if (old) {
+        await admin.from("expenses").delete().eq("budget_id", old.id);
+        await admin.from("monthly_budgets").delete().eq("id", old.id);
+      }
+
+      const { data: budgetId } = await client.rpc("create_month_budget", { p_month: `${year}-02-01` });
+      if (budgetId) createdBudgets.push(budgetId);
+      const { data: generated } = await client
+        .from("expenses")
+        .select("description, expense_date, is_recurring, recurring_template_id")
+        .eq("budget_id", budgetId ?? "")
+        .like("description", `%${tag}`);
+      expect((generated ?? []).map((g) => g.description)).toEqual([`Ativo ${tag}`]);
+      expect(generated?.[0]?.expense_date).toBe(`${year}-02-28`);
+      expect(generated?.[0]?.is_recurring).toBe(true);
+    });
+
+    it("copiar mês anterior: metas sobrescritas, rendas sem duplicar; sem mês anterior dá erro", async () => {
+      const client = await signInAal2(fx.pai);
+      const base = 2060 + Math.floor(Math.random() * 30);
+      const prev = `${base}-05-01`;
+      const cur = `${base}-06-01`;
+      const { data: prevId } = await client.rpc("create_month_budget", { p_month: prev });
+      if (prevId) createdBudgets.push(prevId);
+      const { data: cats } = await client.from("categories").select("id, key").order("sort_order");
+      const custom = [5000, 1000, 1000, 1000, 1500, 500];
+      await client
+        .from("category_targets")
+        .upsert((cats ?? []).map((c, i) => ({ budget_id: prevId ?? "", category_id: c.id, percent_bp: custom[i] ?? 0 })), {
+          onConflict: "budget_id,category_id",
+        });
+      await client.from("incomes").insert({ budget_id: prevId ?? "", description: "Salário cópia", amount_cents: 500000, received_by: "pai" });
+
+      const first = await client.rpc("copy_previous_month", { p_month: cur });
+      expect(first.error).toBeNull();
+      expect(first.data).toBe(1);
+      const second = await client.rpc("copy_previous_month", { p_month: cur });
+      expect(second.data).toBe(0);
+      const { data: curBudget } = await client.from("monthly_budgets").select("id").eq("month", cur).single();
+      if (curBudget) createdBudgets.push(curBudget.id);
+      const { data: t } = await client.from("category_targets").select("percent_bp").eq("budget_id", curBudget?.id ?? "");
+      expect((t ?? []).map((x) => x.percent_bp).sort((a, b) => a - b)).toEqual([...custom].sort((a, b) => a - b));
+      const { data: inc } = await client.from("incomes").select("description").eq("budget_id", curBudget?.id ?? "");
+      expect(inc).toHaveLength(1);
+
+      const noPrev = await client.rpc("copy_previous_month", { p_month: "2049-01-01" });
+      expect(noPrev.error).not.toBeNull();
+    });
+
+    it("intruso e aal1 não copiam meses", async () => {
+      const aal1 = await signInAal1(fx.pai);
+      expect((await aal1.rpc("copy_previous_month", { p_month: "2070-06-01" })).error).not.toBeNull();
+      const intruso = await signInAal2(fx.intruso);
+      expect((await intruso.rpc("copy_previous_month", { p_month: "2070-06-01" })).error).not.toBeNull();
+    });
+  });
+
+  // -------------------------------------------------------------------------
   describe("códigos de recuperação do MFA", () => {
     it("código válido remove o autenticador uma única vez; código errado não", async () => {
       const aal2 = await signInAal2(fx.pai);

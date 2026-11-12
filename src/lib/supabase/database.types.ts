@@ -138,6 +138,7 @@ export type Database = {
     Functions: {
       am_i_member: { Args: Record<string, never>; Returns: boolean };
       create_month_budget: { Args: { p_month: string }; Returns: string };
+      copy_previous_month: { Args: { p_month: string }; Returns: number };
       rate_limit_hit: {
         Args: { p_secret: string; p_scope: string; p_key: string };
         Returns: { allowed: boolean; retry_after_seconds: number }[];

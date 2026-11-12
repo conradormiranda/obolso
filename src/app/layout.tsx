@@ -19,6 +19,8 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false, nocache: true, googleBot: { index: false, follow: false } },
   referrer: "strict-origin-when-cross-origin",
   formatDetection: { telephone: false, email: false, address: false },
+  appleWebApp: { capable: true, title: "O Bolso", statusBarStyle: "black-translucent" },
+  icons: { icon: [{ url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }] },
 };
 
 export const viewport: Viewport = {

@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Repeat } from "lucide-react";
+import { CopyPreviousMonth } from "@/components/app/copy-previous";
+import { DuplicateAlert } from "@/components/app/duplicate-alert";
 import { MonthSelector } from "@/components/app/month-selector";
 import { Panel } from "@/components/app/panel";
 import { SpendingDonut } from "@/components/app/spending-donut";
@@ -10,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { createMonthAction } from "@/lib/actions/budget";
 import { monthLabel } from "@/lib/domain/month";
 import { computeSummary } from "@/lib/domain/summary";
+import { findDuplicates } from "@/lib/domain/text";
 import { requireMember } from "@/lib/server/auth";
 import { loadMonth } from "@/lib/server/budget-data";
 import { resolveMonth } from "@/lib/server/month-param";
@@ -26,6 +29,24 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     spentCents: data.spentCents,
   });
 
+  const duplicates = findDuplicates(data.expenses);
+  const categoryNames = Object.fromEntries(data.categories.map((c) => [c.key, c.name])) as Record<
+    (typeof data.categories)[number]["key"],
+    string
+  >;
+
+  const toolbar = (
+    <div className="flex flex-wrap items-start gap-2">
+      <CopyPreviousMonth month={param} />
+      <Link
+        href="/recorrentes"
+        className="inline-flex h-10 items-center gap-2 rounded-lg border border-border px-3 text-sm font-semibold hover:bg-muted"
+      >
+        <Repeat className="size-4" aria-hidden="true" /> Recorrentes
+      </Link>
+    </div>
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -36,6 +57,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <MonthSelector month={param} />
       </div>
 
+      {/* Mesma posição na árvore com ou sem orçamento: preserva a mensagem da ação de copiar. */}
+      {toolbar}
+
       {data.budgetId === null ? (
         <section className="rounded-2xl border border-dashed border-border p-6 text-center">
           <p className="mb-4">O orçamento de {monthLabel(ref)} ainda não foi criado.</p>
@@ -45,10 +69,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               Criar orçamento de {monthLabel(ref)}
             </Button>
           </form>
-          <p className="mt-3 text-xs text-muted-foreground">Começa com as metas padrão (40/10/10/10/25/5).</p>
+          <p className="mt-3 text-xs text-muted-foreground">
+            Começa com as metas padrão (40/10/10/10/25/5) e com os lançamentos recorrentes ativos.
+          </p>
         </section>
       ) : (
         <>
+          <DuplicateAlert duplicates={duplicates} names={categoryNames} month={param} />
           <Link
             href={`/renda?mes=${param}`}
             className="flex items-center justify-between rounded-2xl border border-border bg-card p-5 hover:border-primary/60"

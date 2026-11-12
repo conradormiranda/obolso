@@ -9,7 +9,14 @@ import { loadCategories } from "@/lib/server/budget-data";
 import { logSecurityEvent } from "@/lib/server/log";
 import { assertSameOrigin } from "@/lib/server/request";
 import type { AppSupabaseClient } from "@/lib/supabase/server";
-import { expenseFormSchema, incomeFormSchema, monthParamSchema, targetsSchema, uuidSchema } from "@/lib/validation/budget";
+import {
+  expenseFormSchema,
+  incomeFormSchema,
+  monthParamSchema,
+  recurringFormSchema,
+  targetsSchema,
+  uuidSchema,
+} from "@/lib/validation/budget";
 import { MSG, echoFields, type FormState } from "./form-state";
 
 /**
@@ -204,6 +211,10 @@ export async function saveExpenseAction(_prev: FormState, formData: FormData): P
   }
 
   refresh();
+  // Lançamento rápido fica na tela atual; o formulário completo volta para a categoria.
+  if (formData.get("returnTo") === "stay") {
+    return { status: "success", message: id ? "Lançamento atualizado." : "Lançamento adicionado." };
+  }
   redirect(`/categoria/${CATEGORY_SLUG[parsed.data.category]}?mes=${parsed.data.month}`);
 }
 
@@ -238,4 +249,88 @@ export async function restoreExpenseAction(id: string): Promise<FormState> {
   if (error || !data.length) return { status: "error", message: "Não foi possível restaurar." };
   refresh();
   return { status: "success", message: "Lançamento restaurado." };
+}
+
+// ---------------------------------------------------------------------------
+// Recorrentes (modelos). Geram lançamentos quando um mês novo é criado.
+// ---------------------------------------------------------------------------
+const RECURRING_FIELDS = ["category", "description", "amount", "paidBy", "paymentMethod", "startsOn", "endsOn", "active"] as const;
+
+export async function saveRecurringAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const ctx = await memberContext();
+  if (!ctx) return { status: "error", message: MSG.genericError };
+
+  const parsed = recurringFormSchema.safeParse({
+    category: formData.get("category"),
+    description: formData.get("description"),
+    amount: formData.get("amount"),
+    paidBy: formData.get("paidBy"),
+    paymentMethod: formData.get("paymentMethod"),
+    startsOn: formData.get("startsOn"),
+    endsOn: formData.get("endsOn") ?? "",
+    active: formData.get("active") === "on" ? "on" : "off",
+  });
+  const echo = echoFields(formData, RECURRING_FIELDS);
+  if (!parsed.success) return fieldError(parsed.error, echo);
+  const idRaw = formData.get("id");
+  const id = idRaw ? uuidSchema.safeParse(idRaw) : null;
+  if (id && !id.success) return { status: "error", message: MSG.genericError };
+
+  const categories = await loadCategories(ctx.supabase);
+  const category = categories.find((c) => c.key === parsed.data.category);
+  if (!category) return { status: "error", message: "Categoria inválida." };
+
+  const fields = {
+    category_id: category.id,
+    description: parsed.data.description,
+    amount_cents: parsed.data.amount,
+    paid_by: parsed.data.paidBy,
+    payment_method: parsed.data.paymentMethod,
+    starts_on: parsed.data.startsOn,
+    ends_on: parsed.data.endsOn,
+    active: parsed.data.active,
+  };
+  if (id) {
+    const { data, error } = await ctx.supabase.from("recurring_templates").update(fields).eq("id", id.data).select("id");
+    if (error) return dbError(error.code, echo);
+    if (!data.length) return { status: "error", message: "Recorrente não encontrado." };
+  } else {
+    const { error } = await ctx.supabase.from("recurring_templates").insert(fields);
+    if (error) return dbError(error.code, echo);
+  }
+  refresh();
+  return { status: "success", message: id ? "Recorrente atualizado." : "Recorrente criado." };
+}
+
+export async function deleteRecurringAction(id: string): Promise<FormState> {
+  const ctx = await memberContext();
+  if (!ctx) return { status: "error", message: MSG.genericError };
+  const parsed = uuidSchema.safeParse(id);
+  if (!parsed.success) return { status: "error", message: MSG.genericError };
+  const { data, error } = await ctx.supabase.from("recurring_templates").delete().eq("id", parsed.data).select("id");
+  if (error || !data.length) return { status: "error", message: MSG.genericError };
+  refresh();
+  return { status: "success", message: "Recorrente excluído." };
+}
+
+// ---------------------------------------------------------------------------
+// Copiar metas e rendas do mês anterior
+// ---------------------------------------------------------------------------
+export async function copyPreviousMonthAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const ctx = await memberContext();
+  if (!ctx) return { status: "error", message: MSG.genericError };
+  const month = monthParamSchema.safeParse(formData.get("month"));
+  const ref = month.success ? parseMonthParam(month.data) : null;
+  if (!ref) return { status: "error", message: "Mês inválido." };
+  const { data, error } = await ctx.supabase.rpc("copy_previous_month", { p_month: monthToDb(ref) });
+  if (error) {
+    if (error.code === "P0002") return { status: "error", message: "O mês anterior não tem orçamento." };
+    return { status: "error", message: MSG.genericError };
+  }
+  refresh();
+  const n = data ?? 0;
+  return {
+    status: "success",
+    message: `Metas copiadas${n > 0 ? ` e ${n} renda${n > 1 ? "s" : ""} adicionada${n > 1 ? "s" : ""}` : "; nenhuma renda nova para copiar"}.`,
+  };
 }

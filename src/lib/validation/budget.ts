@@ -75,3 +75,28 @@ export const incomeFormSchema = z.object({
   receivedBy: z.enum(PAID_BY, { error: "Escolha quem recebeu." }),
 });
 export type IncomeForm = z.infer<typeof incomeFormSchema>;
+
+const optionalDate = z
+  .string()
+  .max(10)
+  .transform((v) => v.trim())
+  .pipe(z.union([z.literal(""), isoDateSchema]))
+  .transform((v) => (v === "" ? null : v));
+
+/** Despesa recorrente (modelo). Fim opcional (ex.: empréstimo com data de término). */
+export const recurringFormSchema = z
+  .object({
+    category: z.enum(CATEGORY_KEYS, { error: "Categoria inválida." }),
+    description: descriptionSchema,
+    amount: brlInputSchema,
+    paidBy: z.enum(PAID_BY, { error: "Escolha quem paga." }),
+    paymentMethod: z.enum(PAYMENT_METHODS, { error: "Forma de pagamento inválida." }),
+    startsOn: isoDateSchema,
+    endsOn: optionalDate,
+    active: z.enum(["on", "off"]).transform((v) => v === "on"),
+  })
+  .refine((v) => v.endsOn === null || v.endsOn >= v.startsOn, {
+    error: "O término precisa ser depois do início.",
+    path: ["endsOn"],
+  });
+export type RecurringForm = z.infer<typeof recurringFormSchema>;

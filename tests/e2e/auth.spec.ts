@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { deleteAllFactors, totpNow } from "../support/fixtures";
-import { fillLogin, loadFixtures } from "./helpers";
+import { fillLogin, loadFixtures, resetRateLimits } from "./helpers";
 
 const fx = loadFixtures();
 if (!fx && process.env.REQUIRE_SECURITY_TESTS === "1") {
@@ -19,6 +19,19 @@ test.describe("login, MFA e sessão", () => {
   test("e-mail inexistente mostra exatamente o mesmo erro", async ({ page }) => {
     await fillLogin(page, "ninguem-aqui@example.com", "senha-errada-123456");
     await expect(page.locator("form [role=alert]")).toHaveText("E-mail ou senha inválidos.");
+  });
+
+  test("rate limit: 6ª tentativa em 15 min é bloqueada, mesmo com a senha certa", async ({ page }) => {
+    if (!fx) return;
+    test.setTimeout(120_000);
+    await resetRateLimits();
+    for (let i = 1; i <= 5; i++) {
+      await fillLogin(page, fx.pai.email, `senha-errada-${i}-abcdef`, { keepRateLimit: true });
+      await expect(page.locator("form [role=alert]")).toHaveText("E-mail ou senha inválidos.");
+    }
+    await fillLogin(page, fx.pai.email, fx.pai.password, { keepRateLimit: true });
+    await expect(page.locator("form [role=alert]")).toContainText("Muitas tentativas");
+    await resetRateLimits();
   });
 
   test("usuário fora da allowlist não entra (mesma mensagem)", async ({ page }) => {

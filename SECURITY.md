@@ -61,6 +61,7 @@ Este documento registra **cada decisão de segurança** e o motivo dela. Atualiz
 - **Dinheiro**: `bigint` em centavos no banco e `number` inteiro no TypeScript (limite de 10¹¹ centavos, bem abaixo de `MAX_SAFE_INTEGER`). O parsing de "1.234,56" não passa por float. A formatação BRL acontece só na apresentação.
 - **Percentuais**: basis points (`4000 = 40%`). Uma constraint trigger diferida exige 6 categorias somando exatamente 10000.
 - **Auditoria**: triggers em `households`, `household_members`, `categories`, `monthly_budgets`, `category_targets`, `incomes`, `recurring_templates` e `expenses` registram quem, quando, a ação (INSERT/UPDATE/DELETE/SOFT_DELETE/RESTORE) e o JSON antes/depois.
+- **Funções de negócio** (`create_month_budget`, `copy_previous_month`) são `SECURITY INVOKER`: rodam com o RLS de quem chama e conferem `is_member_aal2` no início. A criação de mês também gera os lançamentos recorrentes na mesma transação.
 - **Exclusão lógica**: `deleted_at`. Restaurar é possível até 30 dias. Lançamento excluído não pode ser editado. O `pg_cron` purga o que passou de 30 dias, e a purga também fica auditada.
 
 ## 4. Camada web
@@ -74,6 +75,8 @@ Este documento registra **cada decisão de segurança** e o motivo dela. Atualiz
 - **Nada no navegador**: nenhum dado financeiro em `localStorage`/`sessionStorage`. Logs do servidor só registram nome de evento (`logSecurityEvent`), sem e-mail, IP, valores ou tokens.
 - **Erros**: `error.tsx`, `global-error.tsx` e `not-found.tsx` são genéricos e o Next não envia stack traces em produção. Source maps de produção estão desativados.
 - **Todas as páginas são dinâmicas** (`force-dynamic`): nenhum HTML com dados privados fica em cache estático.
+- **PWA sem service worker**: o app é instalável (manifesto + ícones gerados no build), mas não registra service worker, então não existe nenhum cache offline de dados financeiros. Um teste E2E confirma que não há service worker registrado.
+- **Sugestões do lançamento rápido** (descrições e categorias anteriores) vêm do servidor a cada renderização da área autenticada, ficam só na memória da página e nunca vão para `localStorage`.
 
 ## 5. Dependências e CI
 
