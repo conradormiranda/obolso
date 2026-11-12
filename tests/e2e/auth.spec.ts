@@ -1,14 +1,6 @@
-import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
-import { deleteAllFactors, totpNow, type Fixtures } from "../support/fixtures";
-
-function loadFixtures(): Fixtures | null {
-  try {
-    return JSON.parse(readFileSync("tests/.tmp/fixtures.json", "utf8")) as Fixtures | null;
-  } catch {
-    return null;
-  }
-}
+import { deleteAllFactors, totpNow } from "../support/fixtures";
+import { fillLogin, loadFixtures } from "./helpers";
 
 const fx = loadFixtures();
 if (!fx && process.env.REQUIRE_SECURITY_TESTS === "1") {
@@ -17,15 +9,6 @@ if (!fx && process.env.REQUIRE_SECURITY_TESTS === "1") {
 
 test.describe("login, MFA e sessão", () => {
   test.skip(!fx, "Sem Supabase de dev configurado");
-
-  async function fillLogin(page: import("@playwright/test").Page, email: string, password: string) {
-    await page.goto("/login");
-    await page.getByLabel("E-mail").fill(email);
-    await page.getByLabel("Senha").fill(password);
-    // Chave de teste do Turnstile aprova sozinha; espera o token aparecer.
-    await expect(page.locator('input[name="cf-turnstile-response"]')).toHaveValue(/.+/, { timeout: 20_000 });
-    await page.getByRole("button", { name: "Entrar" }).click();
-  }
 
   test("senha errada mostra erro genérico", async ({ page }) => {
     if (!fx) return;
@@ -74,7 +57,7 @@ test.describe("login, MFA e sessão", () => {
     await page.getByLabel("Guardei os códigos em local seguro").check();
     await page.getByRole("link", { name: "Continuar" }).click();
     await page.waitForURL((u) => u.pathname === "/");
-    await expect(page.getByText("Olá, Mãe Teste.")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Orçamento doméstico" })).toBeVisible();
 
     // MFA já configurado: tela de configuração volta para o início
     await page.goto("/mfa/configurar");
@@ -84,7 +67,7 @@ test.describe("login, MFA e sessão", () => {
     await expect(page.getByText("Você tem 10 códigos de recuperação válidos.", { exact: false })).toBeVisible();
     await expect(page.locator("ol li")).toHaveCount(0);
 
-    await page.goto("/");
+    await page.goto("/conta");
 
     await page.getByRole("button", { name: "Sair de todos os dispositivos" }).click();
     await page.waitForURL("**/login");

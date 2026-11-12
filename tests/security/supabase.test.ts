@@ -255,6 +255,46 @@ describe.skipIf(!shouldRun)("segurança do banco (Supabase dev)", () => {
   });
 
   // -------------------------------------------------------------------------
+  describe("criação de mês (RPC create_month_budget)", () => {
+    const randomMonth = () =>
+      `${2050 + Math.floor(Math.random() * 40)}-${String(1 + Math.floor(Math.random() * 12)).padStart(2, "0")}-01`;
+
+    it("aal1 e intruso não criam mês", async () => {
+      const aal1 = await signInAal1(fx.pai);
+      expect((await aal1.rpc("create_month_budget", { p_month: randomMonth() })).error).not.toBeNull();
+      const intruso = await signInAal2(fx.intruso);
+      expect((await intruso.rpc("create_month_budget", { p_month: randomMonth() })).error).not.toBeNull();
+    });
+
+    it("membro aal2 cria com metas padrão (soma 100%) e é idempotente; mês inválido é recusado", async () => {
+      const client = await signInAal2(fx.pai);
+      const month = randomMonth();
+      const first = await client.rpc("create_month_budget", { p_month: month });
+      expect(first.error).toBeNull();
+      if (first.data) createdBudgets.push(first.data);
+      const second = await client.rpc("create_month_budget", { p_month: month });
+      expect(second.data).toBe(first.data);
+      const { data: targets } = await client.from("category_targets").select("percent_bp").eq("budget_id", first.data ?? "");
+      expect((targets ?? []).map((t) => t.percent_bp).sort((a, b) => a - b)).toEqual([500, 1000, 1000, 1000, 2500, 4000]);
+      expect((await client.rpc("create_month_budget", { p_month: "2030-05-15" })).error).not.toBeNull();
+      expect((await client.rpc("create_month_budget", { p_month: "1990-01-01" })).error).not.toBeNull();
+    });
+
+    it("atualizar metas em várias instruções separadas falha (soma checada no commit)", async () => {
+      const client = await signInAal2(fx.pai);
+      const { data: id } = await client.rpc("create_month_budget", { p_month: randomMonth() });
+      if (id) createdBudgets.push(id);
+      const { data: t } = await client.from("category_targets").select("category_id").eq("budget_id", id ?? "").limit(1);
+      const single = await client
+        .from("category_targets")
+        .update({ percent_bp: 9000 })
+        .eq("budget_id", id ?? "")
+        .eq("category_id", t?.[0]?.category_id ?? "");
+      expect(single.error).not.toBeNull();
+    });
+  });
+
+  // -------------------------------------------------------------------------
   describe("códigos de recuperação do MFA", () => {
     it("código válido remove o autenticador uma única vez; código errado não", async () => {
       const aal2 = await signInAal2(fx.pai);

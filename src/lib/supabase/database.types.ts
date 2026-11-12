@@ -137,6 +137,7 @@ export type Database = {
     Views: { [_ in never]: never };
     Functions: {
       am_i_member: { Args: Record<string, never>; Returns: boolean };
+      create_month_budget: { Args: { p_month: string }; Returns: string };
       rate_limit_hit: {
         Args: { p_secret: string; p_scope: string; p_key: string };
         Returns: { allowed: boolean; retry_after_seconds: number }[];
