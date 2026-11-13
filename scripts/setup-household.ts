@@ -23,8 +23,9 @@ const env = z
     RATE_LIMIT_SECRET: z.string().min(32),
     PAI_EMAIL: z.email(),
     PAI_NOME: z.string().min(1).max(60),
-    MAE_EMAIL: z.email(),
-    MAE_NOME: z.string().min(1).max(60),
+    // Mãe é opcional: pode ser adicionada depois rodando o script de novo.
+    MAE_EMAIL: z.email().optional(),
+    MAE_NOME: z.string().min(1).max(60).optional(),
     HOUSEHOLD_NAME: z.string().min(1).max(80),
   })
   .safeParse(process.env);
@@ -104,22 +105,26 @@ async function main() {
     householdId = first.id;
   }
 
+  if (Boolean(e.MAE_EMAIL) !== Boolean(e.MAE_NOME)) {
+    console.error("Informe MAE_EMAIL e MAE_NOME juntos (ou nenhum dos dois).");
+    process.exit(1);
+  }
   const paiId = await ensureUser(e.PAI_EMAIL);
-  const maeId = await ensureUser(e.MAE_EMAIL);
+  const rows: { household_id: string; user_id: string; display_name: string; role: "pai" | "mae" }[] = [
+    { household_id: householdId, user_id: paiId, display_name: e.PAI_NOME, role: "pai" },
+  ];
+  if (e.MAE_EMAIL && e.MAE_NOME) {
+    const maeId = await ensureUser(e.MAE_EMAIL);
+    rows.push({ household_id: householdId, user_id: maeId, display_name: e.MAE_NOME, role: "mae" });
+  }
 
-  const members = await admin.from("household_members").upsert(
-    [
-      { household_id: householdId, user_id: paiId, display_name: e.PAI_NOME, role: "pai" },
-      { household_id: householdId, user_id: maeId, display_name: e.MAE_NOME, role: "mae" },
-    ],
-    { onConflict: "household_id,user_id" },
-  );
+  const members = await admin.from("household_members").upsert(rows, { onConflict: "household_id,user_id" });
   if (members.error) {
     console.error(`Falha em household_members: ${members.error.message}`);
     process.exit(1);
   }
 
-  console.log("Household configurado com 2 membros e 6 categorias.");
+  console.log(`Household configurado com ${rows.length} membro(s) e 6 categorias.`);
   console.log('Próximo passo: cada um acessa o app, clica em "Esqueci minha senha", define a senha e configura o MFA.');
 }
 
