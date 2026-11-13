@@ -40,8 +40,8 @@ jobs:
     name: Testes de segurança (Supabase dev)
     runs-on: ubuntu-latest
     needs: quality
-    # PRs de forks não recebem secrets; os testes falhariam por falta de ambiente.
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    # PRs de forks e do Dependabot não recebem os secrets: só o job de qualidade roda neles.
+    if: github.actor != 'dependabot[bot]' && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository)
     env:
       REQUIRE_SECURITY_TESTS: "1"
       SUPABASE_URL: ${{ secrets.TEST_SUPABASE_URL }}
@@ -62,8 +62,9 @@ jobs:
       - run: npm ci
       - name: Aplicar migrations no projeto de DEV
         run: |
-          npx supabase link --project-ref "$TEST_SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
-          npx supabase db push --password "$SUPABASE_DB_PASSWORD"
+          # A senha vem de SUPABASE_DB_PASSWORD (env); --remote = projeto linkado.
+          npx supabase link --project-ref "$TEST_SUPABASE_PROJECT_REF"
+          npx supabase db push --remote --yes
       - run: npm run test:security
 
   e2e:
