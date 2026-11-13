@@ -63,6 +63,9 @@ jobs:
       - name: Aplicar migrations no projeto de DEV
         run: |
           # A senha vem de SUPABASE_DB_PASSWORD (env); --remote = projeto linkado.
+          # Remove espaços/quebras de linha copiados junto com os secrets.
+          export SUPABASE_DB_PASSWORD="$(printf '%s' "$SUPABASE_DB_PASSWORD" | tr -d '\r\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+          export TEST_SUPABASE_PROJECT_REF="$(printf '%s' "$TEST_SUPABASE_PROJECT_REF" | tr -d '[:space:]')"
           npx supabase link --project-ref "$TEST_SUPABASE_PROJECT_REF"
           npx supabase db push --remote --yes
       - run: npm run test:security

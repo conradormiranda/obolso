@@ -5,6 +5,7 @@
 set -euo pipefail
 
 : "${DB_URL:?defina DB_URL (connection string do Session pooler)}"
+DB_URL="$(printf '%s' "$DB_URL" | tr -d '[:space:]')"
 OUT="${1:?informe o arquivo de saída}"
 PG_BIN="${PG_BIN:-/usr/lib/postgresql/17/bin}"
 

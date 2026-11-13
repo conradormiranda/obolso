@@ -25,12 +25,13 @@ export type Fixtures = { householdId: string; pai: TestUser; mae: TestUser; intr
 type Db = SupabaseClient<Database>;
 
 export function requireTestEnv() {
+  // trim(): secrets colados no GitHub costumam trazer quebra de linha invisível.
   const env = {
-    url: process.env.SUPABASE_URL ?? "",
-    anonKey: process.env.SUPABASE_ANON_KEY ?? "",
-    serviceKey: process.env.TEST_SUPABASE_SERVICE_ROLE_KEY ?? "",
-    projectRef: process.env.TEST_SUPABASE_PROJECT_REF ?? "",
-    rateLimitSecret: process.env.RATE_LIMIT_SECRET ?? "",
+    url: (process.env.SUPABASE_URL ?? "").trim(),
+    anonKey: (process.env.SUPABASE_ANON_KEY ?? "").trim(),
+    serviceKey: (process.env.TEST_SUPABASE_SERVICE_ROLE_KEY ?? "").trim(),
+    projectRef: (process.env.TEST_SUPABASE_PROJECT_REF ?? "").trim(),
+    rateLimitSecret: (process.env.RATE_LIMIT_SECRET ?? "").trim(),
   };
   const missing = Object.entries(env)
     .filter(([, v]) => !v)

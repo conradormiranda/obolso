@@ -7,6 +7,9 @@ import { z } from "zod";
  *
  * Este módulo não importa "server-only" porque também é usado pelo middleware.
  */
+/** Remove espaços e quebras de linha copiados por engano junto com o valor. */
+const clean = (v: unknown) => (typeof v === "string" ? v.trim() : v);
+
 const serverSchema = z.object({
   SUPABASE_URL: z.url(),
   SUPABASE_ANON_KEY: z.string().min(20),
@@ -34,7 +37,8 @@ let cached: ServerEnv | null = null;
 
 export function serverEnv(): ServerEnv {
   if (cached) return cached;
-  const parsed = serverSchema.safeParse(process.env);
+  const raw = Object.fromEntries(Object.entries(process.env).map(([k, v]) => [k, clean(v)]));
+  const parsed = serverSchema.safeParse(raw);
   if (!parsed.success) {
     // Lista apenas os nomes das variáveis inválidas, nunca os valores.
     const names = parsed.error.issues.map((i) => i.path.join(".")).join(", ");

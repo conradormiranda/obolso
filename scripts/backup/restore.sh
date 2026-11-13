@@ -8,6 +8,7 @@
 set -euo pipefail
 
 : "${TARGET_DB_URL:?defina TARGET_DB_URL}"
+TARGET_DB_URL="$(printf '%s' "$TARGET_DB_URL" | tr -d '[:space:]')"
 : "${CONFIRM_REF:?defina CONFIRM_REF com o project ref do destino (trava contra engano)}"
 IN="${1:?informe o arquivo .sql}"
 PG_BIN="${PG_BIN:-/usr/lib/postgresql/17/bin}"

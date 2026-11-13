@@ -6,5 +6,5 @@ export async function getNonce(): Promise<string> {
 }
 
 export function turnstileSiteKey(): string {
-  return process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
+  return (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "").trim();
 }
