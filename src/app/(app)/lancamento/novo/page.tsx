@@ -51,6 +51,7 @@ export default async function NewExpensePage({
           notes: "",
           installmentNumber: "",
           installmentTotal: "",
+          consumption: "",
         }}
       />
     </div>

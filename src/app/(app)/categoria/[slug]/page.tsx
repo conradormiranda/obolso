@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { CONSUMPTION } from "@/lib/domain/consumption";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Plus } from "lucide-react";
@@ -48,6 +49,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
       expenseDate: e.expenseDate,
       paidByLabel: paidByLabel(e.paidBy, data.names),
       installment: e.installmentTotal ? `${e.installmentNumber}/${e.installmentTotal}` : null,
+      consumptionLabel: e.consumption ? CONSUMPTION[e.consumption].label : null,
     }));
 
   return (

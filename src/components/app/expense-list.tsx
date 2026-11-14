@@ -26,6 +26,7 @@ export type ExpenseItem = {
   expenseDate: string;
   paidByLabel: string;
   installment: string | null;
+  consumptionLabel: string | null;
 };
 
 const UNDO_SECONDS = 10;
@@ -93,6 +94,7 @@ export function ExpenseList({ items, month }: { items: ExpenseItem[]; month: str
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {formatDateBr(e.expenseDate)} · {e.paidByLabel}
+                  {e.consumptionLabel ? ` · ${e.consumptionLabel}` : ""}
                 </p>
               </div>
               <p className="shrink-0 font-semibold tabular-nums">{formatCents(e.amountCents)}</p>

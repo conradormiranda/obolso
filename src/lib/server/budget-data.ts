@@ -1,5 +1,6 @@
 import "server-only";
 import type { CategoryKey, PaidBy, PaymentMethod } from "@/lib/supabase/database.types";
+import { isConsumptionKey, type ConsumptionKey } from "@/lib/domain/consumption";
 import type { AppSupabaseClient } from "@/lib/supabase/server";
 import { monthToDb, type MonthRef } from "@/lib/domain/month";
 import { sum } from "@/lib/domain/math";
@@ -24,6 +25,7 @@ export type Expense = {
   notes: string | null;
   installmentNumber: number | null;
   installmentTotal: number | null;
+  consumption: ConsumptionKey | null;
 };
 
 export type Income = { id: string; description: string; amountCents: number; receivedBy: PaidBy };
@@ -83,7 +85,7 @@ export async function loadMonth(supabase: AppSupabaseClient, ref: MonthRef, owne
     supabase.from("incomes").select("id, description, amount_cents, received_by").eq("budget_id", budgetId).order("created_at"),
     supabase
       .from("expenses")
-      .select("id, category_id, description, amount_cents, expense_date, paid_by, payment_method, tags, notes, installment_number, installment_total")
+      .select("id, category_id, description, amount_cents, expense_date, paid_by, payment_method, tags, notes, installment_number, installment_total, consumption")
       .eq("budget_id", budgetId)
       .is("deleted_at", null)
       .order("expense_date", { ascending: false })
@@ -121,6 +123,7 @@ export async function loadMonth(supabase: AppSupabaseClient, ref: MonthRef, owne
       notes: e.notes,
       installmentNumber: e.installment_number,
       installmentTotal: e.installment_total,
+      consumption: isConsumptionKey(e.consumption) ? e.consumption : null,
     });
     spentCents[key] = sum([spentCents[key] ?? 0, e.amount_cents]);
   }
@@ -141,7 +144,7 @@ export async function loadExpense(supabase: AppSupabaseClient, id: string) {
   const { data, error } = await supabase
     .from("expenses")
     .select(
-      "id, budget_id, category_id, description, amount_cents, expense_date, paid_by, payment_method, tags, notes, deleted_at, owner_id, installment_number, installment_total",
+      "id, budget_id, category_id, description, amount_cents, expense_date, paid_by, payment_method, tags, notes, deleted_at, owner_id, installment_number, installment_total, consumption",
     )
     .eq("id", id)
     .maybeSingle();

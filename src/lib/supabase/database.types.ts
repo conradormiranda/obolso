@@ -77,6 +77,7 @@ type ExpenseRow = {
   installment_total: number | null;
   installment_group: Uuid | null;
   imported_from: Uuid | null;
+  consumption: string | null;
   household_id: Uuid;
   budget_id: Uuid;
   category_id: Uuid;
@@ -148,6 +149,7 @@ export type Database = {
           | "installment_total"
           | "installment_group"
           | "imported_from"
+          | "consumption"
         >,
         Partial<ExpenseRow>
       >;

@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { CalendarRange, ChevronRight, Repeat } from "lucide-react";
+import { CalendarRange, ChevronRight, CreditCard, Repeat } from "lucide-react";
 import { ExportLinks } from "@/components/app/export-links";
 import { CopyPreviousMonth } from "@/components/app/copy-previous";
 import { ImportPreviousMonth } from "@/components/app/import-previous";
+import { ConsumptionBreakdown } from "@/components/app/consumption-breakdown";
 import { DuplicateAlert } from "@/components/app/duplicate-alert";
 import { MonthSelector } from "@/components/app/month-selector";
 import { Panel } from "@/components/app/panel";
@@ -43,6 +44,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   const toolbar = (
     <div className="flex flex-wrap items-start gap-2">
+      <Link
+        href={spaceHref("/importar", { mes: param, espaco: space })}
+        className="inline-flex h-10 items-center gap-2 rounded-lg border border-border px-3 text-sm font-semibold hover:bg-muted"
+      >
+        <CreditCard className="size-4" aria-hidden="true" /> Importar fatura do cartão
+      </Link>
       <ImportPreviousMonth month={param} />
       <CopyPreviousMonth month={param} />
       <Link
@@ -125,6 +132,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               <TargetsCard month={param} rows={summary.rows.map((r) => ({ key: r.key, name: r.name, bp: r.targetBp }))} />
             </Panel>
           </div>
+          {data.expenses.length > 0 ? (
+            <Panel title="Por tipo de consumo">
+              <ConsumptionBreakdown expenses={data.expenses} />
+            </Panel>
+          ) : null}
         </>
       )}
     </div>

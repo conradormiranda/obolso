@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { CATEGORY_KEYS, PAID_BY, PAYMENT_METHODS } from "@/lib/domain/categories";
+import { CONSUMPTION_KEYS } from "@/lib/domain/consumption";
 import { parsePercentToBp } from "@/lib/domain/math";
 import { isValidIsoDate, parseMonthParam } from "@/lib/domain/month";
 import { brlInputSchema } from "./money";
@@ -76,6 +77,12 @@ export const installmentSchema = z
   })
   .transform((v) => (v.total === null ? null : { number: v.number ?? 1, total: v.total }));
 
+/** Tipo de consumo: "" = automático (pela descrição). */
+export const consumptionInputSchema = z
+  .union([z.literal(""), z.enum(CONSUMPTION_KEYS, { error: "Tipo de consumo inválido." })])
+  .optional()
+  .transform((v) => (v ? v : null));
+
 export const expenseFormSchema = z.object({
   month: monthParamSchema,
   category: z.enum(CATEGORY_KEYS, { error: "Categoria inválida." }),
@@ -87,6 +94,7 @@ export const expenseFormSchema = z.object({
   tags: tagsInputSchema,
   notes: optionalNotes,
   installment: installmentSchema,
+  consumption: consumptionInputSchema,
 });
 export type ExpenseForm = z.infer<typeof expenseFormSchema>;
 

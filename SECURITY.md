@@ -106,3 +106,9 @@ Este documento registra **cada decisão de segurança** e o motivo dela. Atualiz
 5. **Credencial do banco no GitHub (backup)**: o `pg_dump` precisa de um usuário que enxergue tudo, ou seja, que ignore o RLS, e no Supabase só o `postgres` faz isso. A connection string fica nos secrets do repositório privado. Mitigação: só o dono tem acesso ao repositório, os secrets não aparecem nos logs, e a senha do banco é trocada se houver suspeita.
 6. **Deploy não espera o CI**: um push que quebre testes ainda é publicado (o CI avisa por e-mail). Mitigação: testes completos antes de cada push e reversão imediata na Vercel ("Promote" do deploy anterior).
 7. **Plano gratuito do Supabase**: o projeto pausa depois de 7 dias sem uso e não tem backup gerenciado. Mitigação: nosso backup diário. Para reativar, basta um clique no painel.
+
+## Importação de fatura do cartão
+
+- O arquivo (OFX/CSV) é lido **no navegador** e nunca é enviado nem guardado. O servidor recebe só as linhas que o usuário confirmou na revisão (data, descrição, valor, seção, tipo de consumo, parcela), revalidadas com Zod (`src/lib/actions/statement.ts`) e gravadas com o cliente do usuário (RLS).
+- Categorização **sem serviços externos**: histórico do próprio household + regras de palavras-chave (`src/lib/domain/consumption.ts`, `src/lib/import/categorize.ts`).
+- Limites: arquivo de até 2 MB, até 300 compras por importação; descrição passa pelo mesmo filtro de texto seguro (sem `<`, `>` ou caracteres de controle).

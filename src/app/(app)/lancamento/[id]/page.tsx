@@ -57,6 +57,7 @@ export default async function EditExpensePage({ params }: { params: Promise<{ id
           notes: expense.notes ?? "",
           installmentNumber: expense.installment_number ? String(expense.installment_number) : "",
           installmentTotal: expense.installment_total ? String(expense.installment_total) : "",
+          consumption: expense.consumption ?? "",
         }}
       />
     </div>

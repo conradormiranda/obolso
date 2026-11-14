@@ -3,13 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { CATEGORY_KEYS, CATEGORY_SLUG } from "@/lib/domain/categories";
-import { monthToDb, parseMonthParam, type MonthRef } from "@/lib/domain/month";
+import { consumptionFromText } from "@/lib/domain/consumption";
+import { monthToDb, parseMonthParam } from "@/lib/domain/month";
 import { isPersonal, parseSpace, spaceHref, type Space } from "@/lib/domain/space";
-import { UnauthorizedError, requireMember } from "@/lib/server/auth";
+import { ensureBudget, memberContext } from "@/lib/server/action-context";
 import { loadCategories } from "@/lib/server/budget-data";
-import { logSecurityEvent } from "@/lib/server/log";
-import { assertSameOrigin } from "@/lib/server/request";
-import type { AppSupabaseClient } from "@/lib/supabase/server";
 import {
   expenseFormSchema,
   incomeFormSchema,
@@ -24,24 +22,6 @@ import { MSG, echoFields, type FormState } from "./form-state";
  * Mutações do orçamento. Em TODAS: Origin verificado → sessão + aal2 + membro
  * (requireMember) → entrada validada com Zod → autorização final pelo RLS.
  */
-
-type Ctx = { supabase: AppSupabaseClient; userId: string };
-
-async function memberContext(): Promise<Ctx | null> {
-  try {
-    await assertSameOrigin();
-  } catch {
-    logSecurityEvent("origin_rejected");
-    return null;
-  }
-  try {
-    const { supabase, user } = await requireMember();
-    return { supabase, userId: user.id };
-  } catch (e) {
-    if (e instanceof UnauthorizedError) return null;
-    throw e;
-  }
-}
 
 function fieldError(error: { issues: { message: string }[] }, fields?: Record<string, string>): FormState {
   return { status: "error", message: error.issues[0]?.message ?? MSG.genericError, fields };
@@ -63,6 +43,7 @@ const EXPENSE_FIELDS = [
   "notes",
   "installmentNumber",
   "installmentTotal",
+  "consumption",
 ] as const;
 const INCOME_FIELDS = ["description", "amount", "receivedBy"] as const;
 
@@ -74,14 +55,6 @@ function refresh() {
 function formSpace(formData: FormData): Space {
   const v = formData.get("espaco");
   return parseSpace(typeof v === "string" ? v : null);
-}
-
-async function ensureBudget(supabase: AppSupabaseClient, ref: MonthRef, space: Space): Promise<string | null> {
-  const { data, error } = await supabase.rpc("create_month_budget", {
-    p_month: monthToDb(ref),
-    p_personal: isPersonal(space),
-  });
-  return error ? null : data;
 }
 
 // ---------------------------------------------------------------------------
@@ -197,6 +170,7 @@ export async function saveExpenseAction(_prev: FormState, formData: FormData): P
       number: formData.get("installmentNumber") ?? "",
       total: formData.get("installmentTotal") ?? "",
     },
+    consumption: formData.get("consumption") ?? "",
   });
   const echo = echoFields(formData, EXPENSE_FIELDS);
   if (!parsed.success) return fieldError(parsed.error, echo);
@@ -219,6 +193,8 @@ export async function saveExpenseAction(_prev: FormState, formData: FormData): P
     notes: parsed.data.notes,
     installment_number: parsed.data.installment?.number ?? null,
     installment_total: parsed.data.installment?.total ?? null,
+    // Vazio = automático: deduz pela descrição (bares, mercado, transporte…).
+    consumption: parsed.data.consumption ?? consumptionFromText(parsed.data.description),
   };
 
   if (id) {

@@ -8,6 +8,7 @@ import { Field, FormMessage, SubmitButton, inputClass } from "@/components/auth/
 import { saveExpenseAction } from "@/lib/actions/budget";
 import { idleState } from "@/lib/actions/form-state";
 import { PAYMENT_METHODS, PAYMENT_METHOD_LABEL } from "@/lib/domain/categories";
+import { CONSUMPTION, CONSUMPTION_KEYS } from "@/lib/domain/consumption";
 import type { CategoryKey, PaidBy, PaymentMethod } from "@/lib/supabase/database.types";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +25,7 @@ export type ExpenseFormValues = {
   notes: string;
   installmentNumber: string;
   installmentTotal: string;
+  consumption: string;
 };
 
 const selectClass =
@@ -53,6 +55,7 @@ export function ExpenseForm({
     notes: echo?.notes ?? initial.notes,
     installmentNumber: echo?.installmentNumber ?? initial.installmentNumber,
     installmentTotal: echo?.installmentTotal ?? initial.installmentTotal,
+    consumption: echo?.consumption ?? initial.consumption,
   };
   const formKey = echo ? JSON.stringify(echo) : "initial";
 
@@ -92,6 +95,17 @@ export function ExpenseForm({
           {categories.map((c) => (
             <option key={c.key} value={c.key}>
               {c.name}
+            </option>
+          ))}
+        </select>
+      </Field>
+
+      <Field id="consumption" label="Tipo de consumo">
+        <select id="consumption" name="consumption" defaultValue={v.consumption} className={selectClass}>
+          <option value="">Automático (pela descrição)</option>
+          {CONSUMPTION_KEYS.map((k) => (
+            <option key={k} value={k}>
+              {CONSUMPTION[k].label}
             </option>
           ))}
         </select>
