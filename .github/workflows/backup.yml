@@ -57,8 +57,14 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: auto
-          R2_ENDPOINT: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
         run: |
+          set -euo pipefail
+          # Remove espaços/quebras de linha copiados junto com os secrets.
+          R2_ENDPOINT="$(printf '%s' "$R2_ENDPOINT" | tr -d '[:space:]')"
+          R2_BUCKET="$(printf '%s' "$R2_BUCKET" | tr -d '[:space:]')"
+          export AWS_ACCESS_KEY_ID="$(printf '%s' "$AWS_ACCESS_KEY_ID" | tr -d '[:space:]')"
+          export AWS_SECRET_ACCESS_KEY="$(printf '%s' "$AWS_SECRET_ACCESS_KEY" | tr -d '[:space:]')"
           aws s3 cp "$ARQUIVO" "s3://$R2_BUCKET/diario/$ARQUIVO" --endpoint-url "$R2_ENDPOINT" --only-show-errors
           echo "Enviado: diario/$ARQUIVO" >> "$GITHUB_STEP_SUMMARY"

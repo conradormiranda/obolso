@@ -9,7 +9,7 @@ Domínio: **obolso.com.br**. Hospedagem: **Vercel**, região `gru1` (São Paulo)
 | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `APP_ORIGIN`, `ALLOWED_EMAILS`, `SESSION_SECRET`, `RATE_LIMIT_SECRET`, `TURNSTILE_SECRET_KEY`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `RESEND_API_KEY`, `ALERT_EMAIL_FROM` | Vercel → Project → Settings → Environment Variables (Production) | repositório, GitHub |
 | `service_role` de **produção** | Só no shell, durante o `setup:household` | Vercel, GitHub, arquivos |
 | `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` | GitHub → environment `production` | — |
-| `PROD_DB_URL`, `R2_ACCOUNT_ID`, `R2_BUCKET`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` | GitHub → environment `backup` | — |
+| `PROD_DB_URL`, `R2_ENDPOINT`, `R2_BUCKET`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` | GitHub → environment `backup` | — |
 | Chave privada `age` de produção | Seu gerenciador de senhas | qualquer lugar online |
 | Secrets do dev (`TEST_*`, `DEV_DB_URL`, `DEV_AGE_IDENTITY`, `SUPABASE_ACCESS_TOKEN`) | GitHub → repository secrets e environment `dev` | — |
 
