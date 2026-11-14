@@ -91,7 +91,7 @@ Este documento registra **cada decisão de segurança** e o motivo dela. Atualiz
 - Pendências do `npm audit` em 12/11/2026: apenas severidade **baixa** em `deepmerge`, via CLI do `shadcn` (dependência de desenvolvimento, sem correção publicada). O CI exige:
   - zero vulnerabilidades moderadas ou maiores em dependências de produção;
   - zero vulnerabilidades altas no total.
-- **Deploy só após CI verde**: a integração Git da Vercel não publica (`vercel.json`). O workflow *Deploy (produção)* roda apenas quando o CI da `main` termina com sucesso, com as variáveis puxadas do painel da Vercel no momento do build.
+- **Deploy**: a integração Git da Vercel publica a cada push na `main` (autorizado explicitamente pelo dono em 14/11/2026, para dispensar o cadastro de um token da Vercel). O CI continua rodando em todo push, e os testes são executados localmente antes de cada envio. Para voltar a bloquear o deploy até o CI ficar verde, veja o comentário no topo de `.github/workflows/deploy.yml`.
 - **Backup**: `pg_dump` diário → gzip → `age` (chave pública versionada; a privada só existe com o dono) → bucket R2 privado. A connection string do banco e as chaves do R2 ficam nos secrets do repositório privado do GitHub. Detalhes e restauração em [docs/BACKUP.md](docs/BACKUP.md).
 - **Ensaio de restauração** com par de chaves separado, só para o dev, para que a chave privada de produção nunca precise ir para o GitHub.
 - CI: lint → typecheck → unitários → (migrations no Supabase de dev) testes de segurança → E2E. Os testes de segurança e E2E falham, em vez de serem pulados, se faltar ambiente (`REQUIRE_SECURITY_TESTS=1`).
@@ -104,4 +104,5 @@ Este documento registra **cada decisão de segurança** e o motivo dela. Atualiz
 3. **IP do cliente** vem de `x-forwarded-for`, que é confiável atrás da Vercel. Fora dela, o rate limit por IP pode ser contornado; o limite por e-mail e por usuário continua valendo.
 4. **Abuso de armazenamento do rate limit**: mitigado porque a RPC exige o segredo e há limpeza horária via `pg_cron`.
 5. **Credencial do banco no GitHub (backup)**: o `pg_dump` precisa de um usuário que enxergue tudo, ou seja, que ignore o RLS, e no Supabase só o `postgres` faz isso. A connection string fica nos secrets do repositório privado. Mitigação: só o dono tem acesso ao repositório, os secrets não aparecem nos logs, e a senha do banco é trocada se houver suspeita.
-6. **Plano gratuito do Supabase**: o projeto pausa depois de 7 dias sem uso e não tem backup gerenciado. Mitigação: nosso backup diário. Para reativar, basta um clique no painel.
+6. **Deploy não espera o CI**: um push que quebre testes ainda é publicado (o CI avisa por e-mail). Mitigação: testes completos antes de cada push e reversão imediata na Vercel ("Promote" do deploy anterior).
+7. **Plano gratuito do Supabase**: o projeto pausa depois de 7 dias sem uso e não tem backup gerenciado. Mitigação: nosso backup diário. Para reativar, basta um clique no painel.
