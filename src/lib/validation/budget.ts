@@ -55,6 +55,27 @@ const optionalNotes = z
   .pipe(z.union([z.literal(""), notesSchema]))
   .transform((v) => (v === "" ? null : v));
 
+const optionalInt = z
+  .string()
+  .max(4)
+  .transform((v) => v.trim())
+  .refine((v) => v === "" || /^\d{1,3}$/.test(v), { error: "Parcelas: use só números." })
+  .transform((v) => (v === "" ? null : Number(v)));
+
+/** Compra parcelada: "parcela N de TOTAL" (ambos vazios = à vista). */
+export const installmentSchema = z
+  .object({ number: optionalInt, total: optionalInt })
+  .superRefine((v, ctx) => {
+    if (v.number === null && v.total === null) return;
+    if (v.total === null || v.total < 2 || v.total > 120) {
+      ctx.addIssue({ code: "custom", message: "Total de parcelas deve ser de 2 a 120." });
+      return;
+    }
+    const n = v.number ?? 1;
+    if (n < 1 || n > v.total) ctx.addIssue({ code: "custom", message: "A parcela atual deve estar entre 1 e o total." });
+  })
+  .transform((v) => (v.total === null ? null : { number: v.number ?? 1, total: v.total }));
+
 export const expenseFormSchema = z.object({
   month: monthParamSchema,
   category: z.enum(CATEGORY_KEYS, { error: "Categoria inválida." }),
@@ -65,6 +86,7 @@ export const expenseFormSchema = z.object({
   paymentMethod: z.enum(PAYMENT_METHODS, { error: "Forma de pagamento inválida." }),
   tags: tagsInputSchema,
   notes: optionalNotes,
+  installment: installmentSchema,
 });
 export type ExpenseForm = z.infer<typeof expenseFormSchema>;
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { addMonths, defaultEntryDate, isValidIsoDate, monthLabel, parseMonthParam } from "@/lib/domain/month";
 import { categoryFromSlug } from "@/lib/domain/categories";
-import { expenseFormSchema, incomeFormSchema, targetsSchema } from "@/lib/validation/budget";
+import { expenseFormSchema, incomeFormSchema, installmentSchema, targetsSchema } from "@/lib/validation/budget";
 
 const validExpense = {
   month: "2026-11",
@@ -13,6 +13,7 @@ const validExpense = {
   paymentMethod: "boleto",
   tags: "Casa, casa ,  Saúde",
   notes: "",
+  installment: { number: "", total: "" },
 };
 
 describe("lançamento (validação no servidor)", () => {
@@ -79,5 +80,29 @@ describe("meses", () => {
   it("slugs de categoria", () => {
     expect(categoryFromSlug("custos-fixos")).toBe("custos_fixos");
     expect(categoryFromSlug("hack")).toBeNull();
+  });
+});
+
+describe("compra parcelada", () => {
+  it("vazio = à vista; 'n de N' válido; só o total assume parcela 1", () => {
+    expect(installmentSchema.parse({ number: "", total: "" })).toBeNull();
+    expect(installmentSchema.parse({ number: "3", total: "10" })).toEqual({ number: 3, total: 10 });
+    expect(installmentSchema.parse({ number: "", total: "6" })).toEqual({ number: 1, total: 6 });
+  });
+  it.each([
+    [{ number: "11", total: "10" }],
+    [{ number: "0", total: "10" }],
+    [{ number: "1", total: "1" }],
+    [{ number: "1", total: "121" }],
+    [{ number: "2", total: "" }],
+    [{ number: "x", total: "3" }],
+  ])("rejeita %j", (v) => {
+    expect(installmentSchema.safeParse(v).success).toBe(false);
+  });
+  it("lançamento com parcela passa pela validação completa", () => {
+    expect(expenseFormSchema.parse({ ...validExpense, installment: { number: "1", total: "12" } }).installment).toEqual({
+      number: 1,
+      total: 12,
+    });
   });
 });

@@ -47,6 +47,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
       amountCents: e.amountCents,
       expenseDate: e.expenseDate,
       paidByLabel: paidByLabel(e.paidBy, data.names),
+      installment: e.installmentTotal ? `${e.installmentNumber}/${e.installmentTotal}` : null,
     }));
 
   return (

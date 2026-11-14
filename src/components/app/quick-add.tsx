@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { SpaceField } from "./space";
+import { InstallmentFields } from "./installment-fields";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Plus } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -265,6 +266,7 @@ function QuickAddForm({ categories, payers, defaultPayer, suggestions, onDone }:
               ))}
             </div>
           </div>
+          <InstallmentFields />
           <label className="block text-sm font-medium">
             Observação
             <textarea

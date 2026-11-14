@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { SpaceField } from "./space";
+import { InstallmentFields } from "./installment-fields";
 import { Input } from "@/components/ui/input";
 import { Field, FormMessage, SubmitButton, inputClass } from "@/components/auth/form-bits";
 import { saveExpenseAction } from "@/lib/actions/budget";
@@ -21,6 +22,8 @@ export type ExpenseFormValues = {
   paymentMethod: PaymentMethod;
   tags: string;
   notes: string;
+  installmentNumber: string;
+  installmentTotal: string;
 };
 
 const selectClass =
@@ -48,6 +51,8 @@ export function ExpenseForm({
     paymentMethod: echo?.paymentMethod ?? initial.paymentMethod,
     tags: echo?.tags ?? initial.tags,
     notes: echo?.notes ?? initial.notes,
+    installmentNumber: echo?.installmentNumber ?? initial.installmentNumber,
+    installmentTotal: echo?.installmentTotal ?? initial.installmentTotal,
   };
   const formKey = echo ? JSON.stringify(echo) : "initial";
 
@@ -124,6 +129,8 @@ export function ExpenseForm({
       <Field id="tags" label="Tags (separadas por vírgula)">
         <Input id="tags" name="tags" maxLength={400} placeholder="Filho, Casa, Saúde" defaultValue={v.tags} className={inputClass} />
       </Field>
+
+      <InstallmentFields number={v.installmentNumber} total={v.installmentTotal} />
 
       <Field id="notes" label="Observação">
         <textarea

@@ -496,6 +496,63 @@ describe.skipIf(!shouldRun)("segurança do banco (Supabase dev)", () => {
   });
 
   // -------------------------------------------------------------------------
+  describe("importar do mês anterior: fixas e parcelas", () => {
+    it("traz Custos fixos e a próxima parcela; não duplica; para na última; respeita o espaço", async () => {
+      const pai = await signInAal2(fx.pai);
+      const y = 2050 + Math.floor(Math.random() * 40);
+      const m1 = `${y}-03-01`;
+      const m2 = `${y}-04-01`;
+      const m3 = `${y}-05-01`;
+      const tag = randomBytes(4).toString("hex");
+      const { data: cats } = await pai.from("categories").select("id, key");
+      const cid = (k: string) => cats?.find((c) => c.key === k)?.id ?? "";
+
+      const { data: b1 } = await pai.rpc("create_month_budget", { p_month: m1 });
+      if (b1) createdBudgets.push(b1);
+      const ins = await pai.from("expenses").insert([
+        { budget_id: b1 ?? "", category_id: cid("custos_fixos"), description: `Aluguel ${tag}`, amount_cents: 570000, paid_by: "pai", expense_date: `${y}-03-10`, installment_number: null, installment_total: null },
+        { budget_id: b1 ?? "", category_id: cid("prazeres"), description: `TV ${tag}`, amount_cents: 30000, paid_by: "pai", expense_date: `${y}-03-15`, installment_number: 2, installment_total: 3 },
+        { budget_id: b1 ?? "", category_id: cid("prazeres"), description: `Jantar ${tag}`, amount_cents: 20000, paid_by: "pai", expense_date: `${y}-03-20`, installment_number: null, installment_total: null },
+      ]);
+      expect(ins.error).toBeNull();
+
+      const r1 = await pai.rpc("import_previous_month", { p_month: m2 });
+      expect(r1.error).toBeNull();
+      expect(r1.data).toEqual({ fixed: 1, installments: 1 });
+      const { data: b2 } = await pai.from("monthly_budgets").select("id").eq("month", m2).is("owner_id", null).single();
+      if (b2) createdBudgets.push(b2.id);
+      const { data: e2 } = await pai
+        .from("expenses")
+        .select("description, amount_cents, installment_number, installment_total, expense_date")
+        .eq("budget_id", b2?.id ?? "")
+        .like("description", `%${tag}`)
+        .order("description");
+      expect(e2).toEqual([
+        { description: `Aluguel ${tag}`, amount_cents: 570000, installment_number: null, installment_total: null, expense_date: `${y}-04-10` },
+        { description: `TV ${tag}`, amount_cents: 30000, installment_number: 3, installment_total: 3, expense_date: `${y}-04-15` },
+      ]);
+
+      // clicar de novo não duplica
+      expect((await pai.rpc("import_previous_month", { p_month: m2 })).data).toEqual({ fixed: 0, installments: 0 });
+
+      // no mês seguinte: a TV terminou (3/3) e o aluguel continua
+      const r3 = await pai.rpc("import_previous_month", { p_month: m3 });
+      expect(r3.data).toEqual({ fixed: 1, installments: 0 });
+      const { data: b3 } = await pai.from("monthly_budgets").select("id").eq("month", m3).is("owner_id", null).single();
+      if (b3) createdBudgets.push(b3.id);
+
+      // espaço pessoal da mãe não enxerga nada da família para importar
+      const mae = await signInAal2(fx.mae);
+      const rp = await mae.rpc("import_previous_month", { p_month: m2, p_personal: true });
+      expect(rp.error).not.toBeNull(); // mês anterior pessoal dela não existe
+
+      // aal1 não importa
+      const aal1 = await signInAal1(fx.pai);
+      expect((await aal1.rpc("import_previous_month", { p_month: m2 })).error).not.toBeNull();
+    });
+  });
+
+  // -------------------------------------------------------------------------
   describe("códigos de recuperação do MFA", () => {
     it("código válido remove o autenticador uma única vez; código errado não", async () => {
       const aal2 = await signInAal2(fx.pai);

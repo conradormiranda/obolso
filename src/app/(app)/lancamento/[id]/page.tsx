@@ -55,6 +55,8 @@ export default async function EditExpensePage({ params }: { params: Promise<{ id
           paymentMethod: expense.payment_method,
           tags: expense.tags.join(", "),
           notes: expense.notes ?? "",
+          installmentNumber: expense.installment_number ? String(expense.installment_number) : "",
+          installmentTotal: expense.installment_total ? String(expense.installment_total) : "",
         }}
       />
     </div>

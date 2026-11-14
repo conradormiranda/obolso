@@ -73,6 +73,10 @@ type RecurringRow = {
 type ExpenseRow = {
   id: Uuid;
   owner_id: Uuid | null;
+  installment_number: number | null;
+  installment_total: number | null;
+  installment_group: Uuid | null;
+  imported_from: Uuid | null;
   household_id: Uuid;
   budget_id: Uuid;
   category_id: Uuid;
@@ -132,7 +136,18 @@ export type Database = {
         ExpenseRow,
         InsertOf<
           ExpenseRow,
-          Auto | "expense_date" | "payment_method" | "is_recurring" | "recurring_template_id" | "tags" | "notes" | "deleted_at"
+          | Auto
+          | "expense_date"
+          | "payment_method"
+          | "is_recurring"
+          | "recurring_template_id"
+          | "tags"
+          | "notes"
+          | "deleted_at"
+          | "installment_number"
+          | "installment_total"
+          | "installment_group"
+          | "imported_from"
         >,
         Partial<ExpenseRow>
       >;
@@ -144,6 +159,10 @@ export type Database = {
       am_i_member: { Args: Record<string, never>; Returns: boolean };
       create_month_budget: { Args: { p_month: string; p_personal?: boolean }; Returns: string };
       copy_previous_month: { Args: { p_month: string; p_personal?: boolean }; Returns: number };
+      import_previous_month: {
+        Args: { p_month: string; p_personal?: boolean };
+        Returns: { fixed: number; installments: number };
+      };
       my_sessions: {
         Args: Record<string, never>;
         Returns: {

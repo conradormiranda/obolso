@@ -49,6 +49,8 @@ export default async function NewExpensePage({
           paymentMethod: "pix",
           tags: "",
           notes: "",
+          installmentNumber: "",
+          installmentTotal: "",
         }}
       />
     </div>

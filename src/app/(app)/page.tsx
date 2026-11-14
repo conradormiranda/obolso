@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CalendarRange, ChevronRight, Repeat } from "lucide-react";
 import { ExportLinks } from "@/components/app/export-links";
 import { CopyPreviousMonth } from "@/components/app/copy-previous";
+import { ImportPreviousMonth } from "@/components/app/import-previous";
 import { DuplicateAlert } from "@/components/app/duplicate-alert";
 import { MonthSelector } from "@/components/app/month-selector";
 import { Panel } from "@/components/app/panel";
@@ -42,6 +43,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   const toolbar = (
     <div className="flex flex-wrap items-start gap-2">
+      <ImportPreviousMonth month={param} />
       <CopyPreviousMonth month={param} />
       <Link
         href={spaceHref("/recorrentes", { espaco: space })}

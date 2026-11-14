@@ -22,6 +22,8 @@ export type Expense = {
   paymentMethod: PaymentMethod;
   tags: string[];
   notes: string | null;
+  installmentNumber: number | null;
+  installmentTotal: number | null;
 };
 
 export type Income = { id: string; description: string; amountCents: number; receivedBy: PaidBy };
@@ -81,7 +83,7 @@ export async function loadMonth(supabase: AppSupabaseClient, ref: MonthRef, owne
     supabase.from("incomes").select("id, description, amount_cents, received_by").eq("budget_id", budgetId).order("created_at"),
     supabase
       .from("expenses")
-      .select("id, category_id, description, amount_cents, expense_date, paid_by, payment_method, tags, notes")
+      .select("id, category_id, description, amount_cents, expense_date, paid_by, payment_method, tags, notes, installment_number, installment_total")
       .eq("budget_id", budgetId)
       .is("deleted_at", null)
       .order("expense_date", { ascending: false })
@@ -117,6 +119,8 @@ export async function loadMonth(supabase: AppSupabaseClient, ref: MonthRef, owne
       paymentMethod: e.payment_method,
       tags: e.tags,
       notes: e.notes,
+      installmentNumber: e.installment_number,
+      installmentTotal: e.installment_total,
     });
     spentCents[key] = sum([spentCents[key] ?? 0, e.amount_cents]);
   }
@@ -136,7 +140,9 @@ export async function loadMonth(supabase: AppSupabaseClient, ref: MonthRef, owne
 export async function loadExpense(supabase: AppSupabaseClient, id: string) {
   const { data, error } = await supabase
     .from("expenses")
-    .select("id, budget_id, category_id, description, amount_cents, expense_date, paid_by, payment_method, tags, notes, deleted_at, owner_id")
+    .select(
+      "id, budget_id, category_id, description, amount_cents, expense_date, paid_by, payment_method, tags, notes, deleted_at, owner_id, installment_number, installment_total",
+    )
     .eq("id", id)
     .maybeSingle();
   if (error) throw new DataError("lançamento");

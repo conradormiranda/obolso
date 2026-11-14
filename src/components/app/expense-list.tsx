@@ -25,6 +25,7 @@ export type ExpenseItem = {
   amountCents: number;
   expenseDate: string;
   paidByLabel: string;
+  installment: string | null;
 };
 
 const UNDO_SECONDS = 10;
@@ -82,7 +83,14 @@ export function ExpenseList({ items, month }: { items: ExpenseItem[]; month: str
           {items.map((e) => (
             <li key={e.id} className="flex items-center gap-3 py-3">
               <div className="min-w-0 flex-1">
-                <p className="truncate font-semibold">{e.description}</p>
+                <p className="truncate font-semibold">
+                  {e.description}
+                  {e.installment ? (
+                    <span className="ml-2 rounded bg-secondary px-1.5 py-0.5 text-xs font-semibold tabular-nums text-secondary-foreground">
+                      {e.installment}
+                    </span>
+                  ) : null}
+                </p>
                 <p className="text-xs text-muted-foreground">
                   {formatDateBr(e.expenseDate)} · {e.paidByLabel}
                 </p>

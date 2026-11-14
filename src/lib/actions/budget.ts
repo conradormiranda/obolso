@@ -52,7 +52,18 @@ function dbError(code: string | undefined, fields?: Record<string, string>): For
   return { status: "error", message: MSG.genericError, fields };
 }
 
-const EXPENSE_FIELDS = ["category", "description", "amount", "expenseDate", "paidBy", "paymentMethod", "tags", "notes"] as const;
+const EXPENSE_FIELDS = [
+  "category",
+  "description",
+  "amount",
+  "expenseDate",
+  "paidBy",
+  "paymentMethod",
+  "tags",
+  "notes",
+  "installmentNumber",
+  "installmentTotal",
+] as const;
 const INCOME_FIELDS = ["description", "amount", "receivedBy"] as const;
 
 function refresh() {
@@ -182,6 +193,10 @@ export async function saveExpenseAction(_prev: FormState, formData: FormData): P
     paymentMethod: formData.get("paymentMethod"),
     tags: formData.get("tags") ?? "",
     notes: formData.get("notes") ?? "",
+    installment: {
+      number: formData.get("installmentNumber") ?? "",
+      total: formData.get("installmentTotal") ?? "",
+    },
   });
   const echo = echoFields(formData, EXPENSE_FIELDS);
   if (!parsed.success) return fieldError(parsed.error, echo);
@@ -202,6 +217,8 @@ export async function saveExpenseAction(_prev: FormState, formData: FormData): P
     payment_method: parsed.data.paymentMethod,
     tags: parsed.data.tags,
     notes: parsed.data.notes,
+    installment_number: parsed.data.installment?.number ?? null,
+    installment_total: parsed.data.installment?.total ?? null,
   };
 
   if (id) {
@@ -350,4 +367,32 @@ export async function copyPreviousMonthAction(_prev: FormState, formData: FormDa
     status: "success",
     message: `Metas copiadas${n > 0 ? ` e ${n} renda${n > 1 ? "s" : ""} adicionada${n > 1 ? "s" : ""}` : "; nenhuma renda nova para copiar"}.`,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Importar do mês anterior: Custos fixos (mesmo valor) + próxima parcela
+// ---------------------------------------------------------------------------
+export async function importPreviousMonthAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const ctx = await memberContext();
+  if (!ctx) return { status: "error", message: MSG.genericError };
+  const month = monthParamSchema.safeParse(formData.get("month"));
+  const ref = month.success ? parseMonthParam(month.data) : null;
+  if (!ref) return { status: "error", message: "Mês inválido." };
+  const { data, error } = await ctx.supabase.rpc("import_previous_month", {
+    p_month: monthToDb(ref),
+    p_personal: isPersonal(formSpace(formData)),
+  });
+  if (error) {
+    if (error.code === "P0002") return { status: "error", message: "O mês anterior não tem orçamento." };
+    return { status: "error", message: MSG.genericError };
+  }
+  refresh();
+  const f = data?.fixed ?? 0;
+  const p = data?.installments ?? 0;
+  if (f === 0 && p === 0) return { status: "success", message: "Nada novo para importar: tudo já está neste mês." };
+  const parts = [
+    f > 0 ? `${f} despesa${f > 1 ? "s" : ""} fixa${f > 1 ? "s" : ""}` : null,
+    p > 0 ? `${p} parcela${p > 1 ? "s" : ""}` : null,
+  ].filter(Boolean);
+  return { status: "success", message: `Importado: ${parts.join(" e ")}.` };
 }
