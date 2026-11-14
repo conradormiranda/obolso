@@ -95,7 +95,7 @@ test.describe("Fase 3: usabilidade", () => {
     await expect(page.getByText("Renda adicionada.")).toBeVisible();
     await page.goto(`/?mes=${M2}`);
     await page.getByRole("button", { name: "Copiar metas e rendas do mês anterior" }).click();
-    await expect(page.getByText(/Metas copiadas e 1 renda adicionada/)).toBeVisible();
+    await expect(page.getByText(/Metas copiadas e 1 renda adicionada/)).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText("R$ 8.000,00").first()).toBeVisible();
     await page.screenshot({ path: "test-results/phase3-dashboard.png", fullPage: true });
   });

@@ -65,7 +65,13 @@ export async function middleware(request: NextRequest) {
     },
   });
 
+  // Server Actions (POST com o cabeçalho Next-Action) NUNCA são redirecionadas
+  // aqui: um redirect no meio da ação quebra a resposta ("Algo deu errado").
+  // Cada ação confere sessão, aal2 e membro por conta própria (requireMember).
+  const isServerAction = request.method === "POST" && request.headers.has("next-action");
+
   const redirectTo = (path: string) => {
+    if (isServerAction) return withCsp(response);
     const res = NextResponse.redirect(new URL(path, request.url), 303);
     for (const c of response.cookies.getAll()) res.cookies.set(c);
     return withCsp(res);

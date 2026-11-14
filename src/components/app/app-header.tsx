@@ -6,6 +6,7 @@ import { CalendarRange, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CATEGORY_KEYS, CATEGORY_SLUG } from "@/lib/domain/categories";
 import { CATEGORY_LABEL, CategoryIcon } from "./category-icon";
+import { Logo } from "@/components/brand/logo";
 
 /** Cabeçalho: marca (volta ao painel), ícones das 6 categorias e conta. Mantém o ?mes. */
 export function AppHeader() {
@@ -17,8 +18,9 @@ export function AppHeader() {
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-2 px-4 md:px-6">
-        <Link href={`/${q}`} className="mr-auto text-xl font-bold tracking-tight text-primary">
-          O Bolso
+        <Link href={`/${q}`} className="mr-auto text-xl" aria-label="O Bolso, início">
+          <Logo className="hidden sm:inline-flex" />
+          <Logo className="sm:hidden [&>span:last-child]:sr-only" />
         </Link>
         <nav aria-label="Categorias" className="flex items-center gap-0.5 sm:gap-1">
           {CATEGORY_KEYS.map((key) => {

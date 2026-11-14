@@ -1,12 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { FormMessage } from "@/components/auth/form-bits";
 import { generateRecoveryCodesAction, type RecoveryCodesResult } from "@/lib/actions/auth";
 
-export function RecoveryCodes({ remaining }: { remaining: number }) {
+export function RecoveryCodes({ remaining, next }: { remaining: number; next: string }) {
   const [result, setResult] = useState<RecoveryCodesResult | null>(null);
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
@@ -27,13 +26,14 @@ export function RecoveryCodes({ remaining }: { remaining: number }) {
           <input type="checkbox" checked={saved} onChange={(e) => setSaved(e.target.checked)} className="size-4" />
           Guardei os códigos em local seguro
         </label>
+        {/* Navegação completa (não client-side): garante que o endereço e a tela batem. */}
         {saved ? (
-          <Link
-            href="/"
+          <a
+            href={next}
             className="flex h-11 w-full items-center justify-center rounded-lg bg-primary font-semibold text-primary-foreground"
           >
             Continuar
-          </Link>
+          </a>
         ) : (
           <Button className="h-11 w-full" disabled>
             Continuar
@@ -59,9 +59,9 @@ export function RecoveryCodes({ remaining }: { remaining: number }) {
         {pending ? "Gerando…" : remaining > 0 ? "Gerar novos códigos" : "Gerar códigos de recuperação"}
       </Button>
       {remaining > 0 ? (
-        <Link href="/" className="block text-center text-sm text-primary underline-offset-4 hover:underline">
-          Voltar
-        </Link>
+        <a href={next} className="block text-center text-sm text-primary underline-offset-4 hover:underline">
+          {next === "/" ? "Voltar" : "Continuar"}
+        </a>
       ) : null}
     </div>
   );

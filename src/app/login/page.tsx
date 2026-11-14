@@ -15,7 +15,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const { motivo } = await searchParams;
   const notice = motivo ? REASONS[motivo] : undefined;
   return (
-    <AuthShell title="Entrar" description="Acesso restrito à família.">
+    <AuthShell title="Entrar">
       {notice ? (
         <p role="status" className="mb-4 rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
           {notice}

@@ -14,7 +14,6 @@ const sans = Plus_Jakarta_Sans({
 
 export const metadata: Metadata = {
   title: { default: "O Bolso", template: "%s · O Bolso" },
-  description: "Orçamento doméstico da família.",
   applicationName: "O Bolso",
   robots: { index: false, follow: false, nocache: true, googleBot: { index: false, follow: false } },
   referrer: "strict-origin-when-cross-origin",

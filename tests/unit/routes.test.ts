@@ -50,5 +50,7 @@ describe("decideRoute", () => {
     const u = { ...base, hasUser: true, aal: "aal2" as const, hasVerifiedFactor: true, pwResetPending: true };
     expect(decideRoute({ ...u, path: "/" })).toEqual({ action: "redirect", to: "/redefinir-senha" });
     expect(decideRoute({ ...u, path: "/redefinir-senha" })).toEqual({ action: "next" });
+    // pode guardar os códigos de recuperação antes de trocar a senha
+    expect(decideRoute({ ...u, path: "/mfa/codigos" })).toEqual({ action: "next" });
   });
 });

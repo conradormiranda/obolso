@@ -8,7 +8,6 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "O Bolso",
     short_name: "O Bolso",
-    description: "Orçamento doméstico da família.",
     lang: "pt-BR",
     start_url: "/",
     scope: "/",

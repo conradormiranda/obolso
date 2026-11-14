@@ -11,6 +11,7 @@ export const MFA_VERIFY_PATH = "/mfa";
 export const MFA_SETUP_PATH = "/mfa/configurar";
 export const MFA_RECOVERY_PATH = "/mfa/recuperar";
 export const PWRESET_PATH = "/redefinir-senha";
+export const MFA_CODES_PATH = "/mfa/codigos";
 
 const AUTH_ONLY_WHEN_LOGGED_OUT = new Set(["/login", "/recuperar-senha", MFA_VERIFY_PATH, MFA_RECOVERY_PATH, MFA_SETUP_PATH]);
 
@@ -44,7 +45,8 @@ export function decideRoute(input: RouteInput): RouteDecision {
   }
 
   // aal2
-  if (input.pwResetPending && path !== PWRESET_PATH) return redirect(PWRESET_PATH);
+  // Primeiro acesso / recuperação: guardar os códigos de recuperação e então trocar a senha.
+  if (input.pwResetPending && path !== PWRESET_PATH && path !== MFA_CODES_PATH) return redirect(PWRESET_PATH);
   if (!input.pwResetPending && path === PWRESET_PATH) return redirect("/");
   if (AUTH_ONLY_WHEN_LOGGED_OUT.has(path)) return redirect("/");
   return next;
