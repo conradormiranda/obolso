@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google";
+import { Cormorant_Garamond, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 
 // Todas as páginas são dinâmicas: CSP com nonce por requisição e dados privados
@@ -9,6 +9,14 @@ export const dynamic = "force-dynamic";
 const sans = Plus_Jakarta_Sans({
   variable: "--font-sans",
   subsets: ["latin"],
+  display: "swap",
+});
+
+/** Serifada só na marca, no estilo da Vista Verde Capital. */
+const serif = Cormorant_Garamond({
+  variable: "--font-serif",
+  subsets: ["latin"],
+  weight: ["600", "700"],
   display: "swap",
 });
 
@@ -22,15 +30,15 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#222222",
-  colorScheme: "dark",
+  themeColor: "#F7F3EC",
+  colorScheme: "light",
   width: "device-width",
   initialScale: 1,
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="pt-BR" className={sans.variable}>
+    <html lang="pt-BR" className={`${sans.variable} ${serif.variable}`}>
       <body className="min-h-dvh bg-background font-sans text-foreground antialiased">{children}</body>
     </html>
   );

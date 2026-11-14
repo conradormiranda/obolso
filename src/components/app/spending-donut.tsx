@@ -30,8 +30,8 @@ export function SpendingDonut({ slices, totalCents }: { slices: DonutSlice[]; to
               </Pie>
               <Tooltip
                 formatter={(value) => (typeof value === "number" ? formatCents(value) : String(value))}
-                contentStyle={{ background: "#2A2A2A", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8 }}
-                itemStyle={{ color: "#F2F2F2" }}
+                contentStyle={{ background: "#FFFDF8", border: "1px solid rgba(31,61,46,0.15)", borderRadius: 8 }}
+                itemStyle={{ color: "#1E2B24" }}
               />
             </PieChart>
           </ResponsiveContainer>

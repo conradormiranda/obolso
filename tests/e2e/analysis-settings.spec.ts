@@ -125,7 +125,8 @@ test.describe("Fase 4: análise, exportação, auditoria e configurações", () 
     await page.getByLabel("Repita a nova senha").fill(newPassword);
     await page.getByLabel("Código do autenticador").fill(code);
     await page.getByRole("button", { name: "Trocar senha" }).click();
-    await expect(page.getByText("Senha alterada. As outras sessões foram encerradas.")).toBeVisible();
+    // Troca de senha consulta o HIBP e faz várias chamadas ao Auth: pode passar de 5 s.
+    await expect(page.getByText("Senha alterada. As outras sessões foram encerradas.")).toBeVisible({ timeout: 20_000 });
 
     // Trocar autenticador → volta para a configuração do MFA
     const code2 = await freshTotp(secret, code);

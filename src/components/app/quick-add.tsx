@@ -186,7 +186,7 @@ function QuickAddForm({ categories, payers, defaultPayer, suggestions, onDone }:
               />
               <span
                 className="flex h-12 items-center justify-center rounded-lg border border-input peer-checked:border-transparent peer-focus-visible:ring-3 peer-focus-visible:ring-ring/50"
-                style={category === c.key ? { background: c.color, color: "#1A1A1A" } : { color: c.color }}
+                style={category === c.key ? { background: c.color, color: "#FFFDF8" } : { color: c.color }}
               >
                 <CategoryIcon category={c.key} className="size-5" />
               </span>

@@ -32,9 +32,9 @@ export function LogoMark({ className, title }: { className?: string; title?: str
 
 export function Logo({ className, markClassName }: { className?: string; markClassName?: string }) {
   return (
-    <span className={cn("inline-flex items-center gap-2 font-bold tracking-tight text-primary", className)}>
-      <LogoMark className={cn("size-[1.4em]", markClassName)} />
-      <span>O Bolso</span>
+    <span className={cn("inline-flex items-center gap-2 text-primary", className)}>
+      <LogoMark className={cn("size-[1.4em] text-gold", markClassName)} />
+      <span className="font-serif text-[1.15em] font-bold uppercase tracking-[0.12em]">O Bolso</span>
     </span>
   );
 }

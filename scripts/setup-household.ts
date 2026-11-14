@@ -37,12 +37,12 @@ if (!env.success) {
 const e = env.data;
 
 const CATEGORIES = [
-  { key: "custos_fixos", name: "Custos fixos", icon: "house", color: "#5BC0EB", sort_order: 1 },
-  { key: "conforto", name: "Conforto", icon: "car", color: "#4FE3C1", sort_order: 2 },
-  { key: "metas", name: "Metas", icon: "target", color: "#F2E94E", sort_order: 3 },
-  { key: "prazeres", name: "Prazeres", icon: "wine", color: "#F28CE6", sort_order: 4 },
-  { key: "liberdade_financeira", name: "Liberdade financeira", icon: "dollar-sign", color: "#6C8CF5", sort_order: 5 },
-  { key: "conhecimento", name: "Conhecimento", icon: "graduation-cap", color: "#F7931E", sort_order: 6 },
+  { key: "custos_fixos", name: "Custos fixos", icon: "house", color: "#1F3D2E", sort_order: 1 },
+  { key: "conforto", name: "Conforto", icon: "car", color: "#6F9A78", sort_order: 2 },
+  { key: "metas", name: "Metas", icon: "target", color: "#B8996A", sort_order: 3 },
+  { key: "prazeres", name: "Prazeres", icon: "wine", color: "#B5654A", sort_order: 4 },
+  { key: "liberdade_financeira", name: "Liberdade financeira", icon: "dollar-sign", color: "#2F5D6E", sort_order: 5 },
+  { key: "conhecimento", name: "Conhecimento", icon: "graduation-cap", color: "#8A7A3E", sort_order: 6 },
 ] as const;
 
 const admin = createClient<Database>(e.SUPABASE_URL, e.SETUP_SUPABASE_SERVICE_ROLE_KEY, {

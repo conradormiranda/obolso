@@ -4,7 +4,7 @@ import { ImageResponse } from "next/og";
 export function renderAppIcon(size: number, opts: { maskable?: boolean } = {}) {
   const pad = opts.maskable ? size * 0.22 : size * 0.14;
   const mark = size - pad * 2;
-  const gold = "#D4AF6A";
+  const gold = "#C9AD7E";
   return new ImageResponse(
     (
       <div
@@ -14,7 +14,7 @@ export function renderAppIcon(size: number, opts: { maskable?: boolean } = {}) {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#222222",
+          background: "#1F3D2E",
           borderRadius: opts.maskable ? 0 : size * 0.22,
         }}
       >

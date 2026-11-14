@@ -28,6 +28,8 @@
   --color-destructive: var(--destructive);
   --color-success: var(--success);
   --color-warning: var(--warning);
+  --color-gold: var(--gold);
+  --font-serif: var(--font-serif);
   --color-chart-6: var(--chart-6);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
@@ -51,43 +53,44 @@
 }
 
 :root {
-  /* O Bolso — tema escuro padrão */
-  color-scheme: dark;
-  --background: #222222;
-  --foreground: #F2F2F2;
-  --card: #2A2A2A;
-  --card-foreground: #F2F2F2;
-  --popover: #2A2A2A;
-  --popover-foreground: #F2F2F2;
-  --primary: #D4AF6A;
-  --primary-foreground: #1A1A1A;
-  --secondary: #333333;
-  --secondary-foreground: #F2F2F2;
-  --muted: #303030;
-  --muted-foreground: #B3B3B3;
-  --accent: #333333;
-  --accent-foreground: #F2F2F2;
-  --destructive: #E85A3C;
-  --success: #4CC38A;
-  --warning: #F2C94C;
-  --border: rgb(255 255 255 / 10%);
-  --input: rgb(255 255 255 / 18%);
-  --ring: #D4AF6A;
-  --chart-1: #5BC0EB;
-  --chart-2: #4FE3C1;
-  --chart-3: #F2E94E;
-  --chart-4: #F28CE6;
-  --chart-5: #6C8CF5;
-  --chart-6: #F7931E;
+  /* O Bolso — paleta Vista Verde: creme, verde escuro e dourado suave */
+  color-scheme: light;
+  --background: #F7F3EC;
+  --foreground: #1E2B24;
+  --card: #FFFDF8;
+  --card-foreground: #1E2B24;
+  --popover: #FFFDF8;
+  --popover-foreground: #1E2B24;
+  --primary: #1F3D2E;
+  --primary-foreground: #F7F3EC;
+  --secondary: #ECE5D8;
+  --secondary-foreground: #1E2B24;
+  --muted: #EFE9DF;
+  --muted-foreground: #5C635D;
+  --accent: #ECE5D8;
+  --accent-foreground: #1E2B24;
+  --destructive: #A63D2A;
+  --success: #2E7049;
+  --warning: #85570A;
+  --gold: #B8996A;
+  --border: rgb(31 61 46 / 14%);
+  --input: rgb(31 61 46 / 24%);
+  --ring: #2F6B4F;
+  --chart-1: #1F3D2E;
+  --chart-2: #6F9A78;
+  --chart-3: #B8996A;
+  --chart-4: #B5654A;
+  --chart-5: #2F5D6E;
+  --chart-6: #8A7A3E;
   --radius: 0.75rem;
-  --sidebar: #2A2A2A;
-  --sidebar-foreground: #F2F2F2;
-  --sidebar-primary: #D4AF6A;
-  --sidebar-primary-foreground: #1A1A1A;
-  --sidebar-accent: #333333;
-  --sidebar-accent-foreground: #F2F2F2;
-  --sidebar-border: rgb(255 255 255 / 10%);
-  --sidebar-ring: #D4AF6A;
+  --sidebar: #FFFDF8;
+  --sidebar-foreground: #1E2B24;
+  --sidebar-primary: #1F3D2E;
+  --sidebar-primary-foreground: #F7F3EC;
+  --sidebar-accent: #ECE5D8;
+  --sidebar-accent-foreground: #1E2B24;
+  --sidebar-border: rgb(31 61 46 / 14%);
+  --sidebar-ring: #2F6B4F;
 }
 
 @layer base {

@@ -9,7 +9,7 @@ type TurnstileApi = {
     opts: {
       sitekey: string;
       action: string;
-      theme: "dark";
+      theme: "light";
       language: string;
       "response-field-name": string;
     },
@@ -53,7 +53,7 @@ export function Turnstile({
     widgetId.current = window.turnstile.render(container.current, {
       sitekey: siteKey,
       action,
-      theme: "dark",
+      theme: "light",
       language: "pt-br",
       "response-field-name": "cf-turnstile-response",
     });
