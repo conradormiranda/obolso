@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState, useTransition } from "react";
+import { SpaceField } from "./space";
 import { Pencil, Trash2 } from "lucide-react";
 import {
   AlertDialog,
@@ -134,6 +135,7 @@ export function RecurringManager({
       <form key={formKey} action={action} className="space-y-4 rounded-2xl border border-border bg-card p-5" noValidate>
         <h2 className="text-lg font-bold text-primary">{cur ? "Editar recorrente" : "Nova despesa recorrente"}</h2>
         {cur ? <input type="hidden" name="id" value={cur.id} /> : null}
+        <SpaceField />
         <Field id="rec-description" label="Descrição">
           <Input id="rec-description" name="description" maxLength={120} defaultValue={v.description} className={inputClass} />
         </Field>

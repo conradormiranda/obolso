@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { SpaceField } from "./space";
 import { Input } from "@/components/ui/input";
 import { Field, FormMessage, SubmitButton, inputClass } from "@/components/auth/form-bits";
 import { saveExpenseAction } from "@/lib/actions/budget";
@@ -54,6 +55,7 @@ export function ExpenseForm({
     <form key={formKey} action={action} className="space-y-4" noValidate>
       {initial.id ? <input type="hidden" name="id" value={initial.id} /> : null}
       <input type="hidden" name="month" value={initial.month} />
+      <SpaceField />
 
       <Field id="amount" label="Valor (R$)">
         <Input

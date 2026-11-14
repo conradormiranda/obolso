@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { ExpenseForm } from "@/components/app/expense-form";
 import { CATEGORY_SLUG } from "@/lib/domain/categories";
 import { monthFromDb, monthParam } from "@/lib/domain/month";
+import { spaceHref } from "@/lib/domain/space";
 import { requireMember } from "@/lib/server/auth";
 import { loadCategories, loadExpense, loadMemberNames } from "@/lib/server/budget-data";
 import { payerOptions } from "@/lib/server/form-options";
@@ -25,15 +26,16 @@ export default async function EditExpensePage({ params }: { params: Promise<{ id
   if (!expense || expense.deleted_at) notFound();
 
   const category = categories.find((c) => c.id === expense.category_id);
-  const { data: budget } = await supabase.from("monthly_budgets").select("month").eq("id", expense.budget_id).maybeSingle();
+  const { data: budget } = await supabase.from("monthly_budgets").select("month, owner_id").eq("id", expense.budget_id).maybeSingle();
   const ref = budget ? monthFromDb(budget.month) : null;
   if (!category || !ref) notFound();
   const param = monthParam(ref);
+  const espaco = budget?.owner_id ? "pessoal" : "familia";
 
   return (
     <div className="mx-auto max-w-md space-y-5">
       <Link
-        href={`/categoria/${CATEGORY_SLUG[category.key]}?mes=${param}`}
+        href={spaceHref(`/categoria/${CATEGORY_SLUG[category.key]}`, { mes: param, espaco })}
         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="size-4" aria-hidden="true" /> Voltar

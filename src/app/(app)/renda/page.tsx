@@ -7,13 +7,16 @@ import { requireMember } from "@/lib/server/auth";
 import { loadMonth } from "@/lib/server/budget-data";
 import { myRole, payerOptions } from "@/lib/server/form-options";
 import { resolveMonth } from "@/lib/server/month-param";
+import { resolveSpace } from "@/lib/server/space";
 
 export const metadata: Metadata = { title: "Renda do mês" };
 
-export default async function IncomePage({ searchParams }: { searchParams: Promise<{ mes?: string }> }) {
-  const { ref, param } = resolveMonth((await searchParams).mes);
+export default async function IncomePage({ searchParams }: { searchParams: Promise<{ mes?: string; espaco?: string }> }) {
+  const sp = await searchParams;
+  const { ref, param } = resolveMonth(sp.mes);
   const { supabase, user } = await requireMember();
-  const [data, role] = await Promise.all([loadMonth(supabase, ref), myRole(supabase, user)]);
+  const { ownerId } = resolveSpace(sp.espaco, user);
+  const [data, role] = await Promise.all([loadMonth(supabase, ref, ownerId), myRole(supabase, user)]);
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">

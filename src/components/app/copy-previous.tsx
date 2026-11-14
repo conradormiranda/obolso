@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { SpaceField } from "./space";
 import { Copy } from "lucide-react";
 import { FormMessage } from "@/components/auth/form-bits";
 import { copyPreviousMonthAction } from "@/lib/actions/budget";
@@ -11,6 +12,7 @@ export function CopyPreviousMonth({ month }: { month: string }) {
   return (
     <form action={action} className="space-y-2">
       <input type="hidden" name="month" value={month} />
+      <SpaceField />
       <button
         type="submit"
         disabled={pending}

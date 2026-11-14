@@ -10,6 +10,8 @@ import { CATEGORY_KEYS } from "@/lib/domain/categories";
 import { currentMonth } from "@/lib/domain/month";
 import { requireMember } from "@/lib/server/auth";
 import { loadPeriod, toAnnualInput } from "@/lib/server/period-data";
+import { resolveSpace } from "@/lib/server/space";
+import { spaceHref } from "@/lib/domain/space";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Visão anual" };
@@ -19,10 +21,12 @@ function parseYear(v: string | undefined): number {
   return n >= 2000 && n <= 2100 ? n : currentMonth().year;
 }
 
-export default async function AnnualPage({ searchParams }: { searchParams: Promise<{ ano?: string }> }) {
-  const year = parseYear((await searchParams).ano);
-  const { supabase } = await requireMember();
-  const period = await loadPeriod(supabase, year, null);
+export default async function AnnualPage({ searchParams }: { searchParams: Promise<{ ano?: string; espaco?: string }> }) {
+  const sp = await searchParams;
+  const year = parseYear(sp.ano);
+  const { supabase, user } = await requireMember();
+  const { space, ownerId } = resolveSpace(sp.espaco, user);
+  const period = await loadPeriod(supabase, year, null, ownerId);
   const annual = computeAnnual(toAnnualInput(period));
   const catName = Object.fromEntries(period.categories.map((c) => [c.key, c.name]));
   const navCls = "flex size-11 items-center justify-center rounded-full border border-border hover:bg-muted";
@@ -35,19 +39,19 @@ export default async function AnnualPage({ searchParams }: { searchParams: Promi
           <p className="text-sm text-muted-foreground">12 meses × 6 categorias.</p>
         </div>
         <div className="flex items-center gap-2">
-          <Link href={`/anual?ano=${year - 1}`} aria-label="Ano anterior" className={navCls}>
+          <Link href={spaceHref("/anual", { ano: String(year - 1), espaco: space })} aria-label="Ano anterior" className={navCls}>
             <ChevronLeft className="size-5" aria-hidden="true" />
           </Link>
           <span className="flex h-11 min-w-28 items-center justify-center rounded-full bg-primary px-5 text-base font-bold text-primary-foreground">
             {year}
           </span>
-          <Link href={`/anual?ano=${year + 1}`} aria-label="Próximo ano" className={navCls}>
+          <Link href={spaceHref("/anual", { ano: String(year + 1), espaco: space })} aria-label="Próximo ano" className={navCls}>
             <ChevronRight className="size-5" aria-hidden="true" />
           </Link>
         </div>
       </div>
 
-      <ExportLinks period={String(year)} label={`o ano de ${year}`} />
+      <ExportLinks period={String(year)} label={`o ano de ${year}`} espaco={space} />
 
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-2xl border border-border bg-card p-5">
@@ -103,7 +107,7 @@ export default async function AnnualPage({ searchParams }: { searchParams: Promi
               {annual.months.map((m) => (
                 <tr key={m.month} className={cn("border-t border-dashed border-border", !m.hasBudget && "text-muted-foreground")}>
                   <th scope="row" className="py-2.5 pr-3 text-left font-semibold">
-                    <Link href={`/?mes=${year}-${String(m.month).padStart(2, "0")}`} className="hover:text-primary">
+                    <Link href={spaceHref("/", { mes: `${year}-${String(m.month).padStart(2, "0")}`, espaco: space })} className="hover:text-primary">
                       {MONTH_SHORT[m.month - 1]}
                     </Link>
                   </th>

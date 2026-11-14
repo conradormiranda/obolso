@@ -34,15 +34,17 @@ type CategoryRow = {
 };
 type BudgetRow = {
   id: Uuid;
+  owner_id: Uuid | null;
   household_id: Uuid;
   month: string;
   created_by: Uuid;
   created_at: Timestamp;
   updated_at: Timestamp;
 };
-type TargetRow = { household_id: Uuid; budget_id: Uuid; category_id: Uuid; percent_bp: number };
+type TargetRow = { household_id: Uuid; budget_id: Uuid; category_id: Uuid; percent_bp: number; owner_id: Uuid | null };
 type IncomeRow = {
   id: Uuid;
+  owner_id: Uuid | null;
   household_id: Uuid;
   budget_id: Uuid;
   description: string;
@@ -54,6 +56,7 @@ type IncomeRow = {
 };
 type RecurringRow = {
   id: Uuid;
+  owner_id: Uuid | null;
   household_id: Uuid;
   category_id: Uuid;
   description: string;
@@ -69,6 +72,7 @@ type RecurringRow = {
 };
 type ExpenseRow = {
   id: Uuid;
+  owner_id: Uuid | null;
   household_id: Uuid;
   budget_id: Uuid;
   category_id: Uuid;
@@ -95,6 +99,7 @@ type KnownDeviceRow = {
 };
 type AuditRow = {
   id: number;
+  owner_id: Uuid | null;
   household_id: Uuid | null;
   table_name: string;
   record_id: string;
@@ -106,7 +111,7 @@ type AuditRow = {
 };
 
 /** Campos preenchidos pelo banco (defaults/triggers) ficam opcionais no insert. */
-type Auto = "id" | "household_id" | "created_by" | "created_at" | "updated_at";
+type Auto = "id" | "household_id" | "created_by" | "created_at" | "updated_at" | "owner_id";
 type InsertOf<Row, K extends keyof Row> = Omit<Row, K> & Partial<Pick<Row, K>>;
 
 export type Database = {
@@ -116,7 +121,7 @@ export type Database = {
       household_members: Table<MemberRow, InsertOf<MemberRow, "created_at">, Partial<MemberRow>>;
       categories: Table<CategoryRow, InsertOf<CategoryRow, "id">, Partial<CategoryRow>>;
       monthly_budgets: Table<BudgetRow, InsertOf<BudgetRow, Auto>, Partial<BudgetRow>>;
-      category_targets: Table<TargetRow, InsertOf<TargetRow, "household_id">, Partial<TargetRow>>;
+      category_targets: Table<TargetRow, InsertOf<TargetRow, "household_id" | "owner_id">, Partial<TargetRow>>;
       incomes: Table<IncomeRow, InsertOf<IncomeRow, Auto>, Partial<IncomeRow>>;
       recurring_templates: Table<
         RecurringRow,
@@ -137,8 +142,8 @@ export type Database = {
     Views: { [_ in never]: never };
     Functions: {
       am_i_member: { Args: Record<string, never>; Returns: boolean };
-      create_month_budget: { Args: { p_month: string }; Returns: string };
-      copy_previous_month: { Args: { p_month: string }; Returns: number };
+      create_month_budget: { Args: { p_month: string; p_personal?: boolean }; Returns: string };
+      copy_previous_month: { Args: { p_month: string; p_personal?: boolean }; Returns: number };
       my_sessions: {
         Args: Record<string, never>;
         Returns: {

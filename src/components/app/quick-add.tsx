@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
+import { SpaceField } from "./space";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Plus } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -95,6 +96,7 @@ function QuickAddForm({ categories, payers, defaultPayer, suggestions, onDone }:
     <form action={action} className="space-y-4" noValidate>
       <input type="hidden" name="month" value={monthParam(ref)} />
       <input type="hidden" name="returnTo" value="stay" />
+      <SpaceField />
 
       <label className="block">
         <span className="text-sm font-medium">Valor</span>

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { CATEGORY_SLUG } from "@/lib/domain/categories";
+import { spaceHref, type Space } from "@/lib/domain/space";
 import { formatBp, roundBpTo1Decimal } from "@/lib/domain/math";
 import type { Summary } from "@/lib/domain/summary";
 import { cn } from "@/lib/utils";
@@ -11,7 +12,7 @@ function Share({ bp }: { bp: number | null }) {
 }
 
 /** Tabela "Resumo". Em telas largas, tabela; no celular, lista empilhada. */
-export function SummaryTable({ summary, month }: { summary: Summary; month: string }) {
+export function SummaryTable({ summary, month, espaco }: { summary: Summary; month: string; espaco: Space }) {
   return (
     <div>
       {/* Desktop */}
@@ -30,7 +31,7 @@ export function SummaryTable({ summary, month }: { summary: Summary; month: stri
           {summary.rows.map((r) => (
             <tr key={r.key} className="border-t border-dashed border-border">
               <th scope="row" className="py-3 text-left font-semibold">
-                <Link href={`/categoria/${CATEGORY_SLUG[r.key]}?mes=${month}`} className="hover:text-primary">
+                <Link href={spaceHref(`/categoria/${CATEGORY_SLUG[r.key]}`, { mes: month, espaco })} className="hover:text-primary">
                   {r.name}
                 </Link>
               </th>
@@ -48,7 +49,7 @@ export function SummaryTable({ summary, month }: { summary: Summary; month: stri
         {summary.rows.map((r) => (
           <li key={r.key}>
             <Link
-              href={`/categoria/${CATEGORY_SLUG[r.key]}?mes=${month}`}
+              href={spaceHref(`/categoria/${CATEGORY_SLUG[r.key]}`, { mes: month, espaco })}
               className="flex items-center gap-3 rounded-lg px-1 py-3 hover:bg-muted"
             >
               <span

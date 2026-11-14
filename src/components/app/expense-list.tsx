@@ -15,6 +15,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { deleteExpenseAction, restoreExpenseAction } from "@/lib/actions/budget";
 import { formatDateBr } from "@/lib/domain/month";
+import { spaceHref } from "@/lib/domain/space";
+import { useSpace } from "./space";
 import { formatCents } from "@/lib/validation/money";
 
 export type ExpenseItem = {
@@ -34,6 +36,7 @@ export function ExpenseList({ items, month }: { items: ExpenseItem[]; month: str
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const espaco = useSpace();
 
   useEffect(() => {
     if (!undo) return;
@@ -86,7 +89,7 @@ export function ExpenseList({ items, month }: { items: ExpenseItem[]; month: str
               </div>
               <p className="shrink-0 font-semibold tabular-nums">{formatCents(e.amountCents)}</p>
               <Link
-                href={`/lancamento/${e.id}?mes=${month}`}
+                href={spaceHref(`/lancamento/${e.id}`, { mes: month, espaco })}
                 aria-label={`Editar ${e.description}`}
                 className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground"
               >

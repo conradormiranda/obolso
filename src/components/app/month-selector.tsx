@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { addMonths, monthLabel, monthParam, parseMonthParam } from "@/lib/domain/month";
 
@@ -9,6 +9,12 @@ import { addMonths, monthLabel, monthParam, parseMonthParam } from "@/lib/domain
 export function MonthSelector({ month }: { month: string }) {
   const router = useRouter();
   const pathname = usePathname();
+  const params = useSearchParams();
+  const hrefFor = (m: string) => {
+    const sp = new URLSearchParams(params.toString());
+    sp.set("mes", m);
+    return `${pathname}?${sp.toString()}`;
+  };
   const ref = parseMonthParam(month);
   if (!ref) return null;
   const prev = monthParam(addMonths(ref, -1));
@@ -18,7 +24,7 @@ export function MonthSelector({ month }: { month: string }) {
 
   return (
     <div className="flex items-center gap-2">
-      <Link href={`${pathname}?mes=${prev}`} aria-label="Mês anterior" className={linkClass}>
+      <Link href={hrefFor(prev)} aria-label="Mês anterior" className={linkClass}>
         <ChevronLeft className="size-5" aria-hidden="true" />
       </Link>
       <label className="relative">
@@ -32,12 +38,12 @@ export function MonthSelector({ month }: { month: string }) {
           min="2000-01"
           max="2100-12"
           onChange={(e) => {
-            if (parseMonthParam(e.target.value)) router.push(`${pathname}?mes=${e.target.value}`);
+            if (parseMonthParam(e.target.value)) router.push(hrefFor(e.target.value));
           }}
           className="absolute inset-0 cursor-pointer opacity-0"
         />
       </label>
-      <Link href={`${pathname}?mes=${next}`} aria-label="Próximo mês" className={linkClass}>
+      <Link href={hrefFor(next)} aria-label="Próximo mês" className={linkClass}>
         <ChevronRight className="size-5" aria-hidden="true" />
       </Link>
     </div>

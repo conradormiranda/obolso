@@ -3,6 +3,7 @@ import { buildCsv, buildWorkbook } from "@/lib/export/build";
 import { UnauthorizedError, requireMember } from "@/lib/server/auth";
 import { logSecurityEvent } from "@/lib/server/log";
 import { loadPeriod, toAnnualInput } from "@/lib/server/period-data";
+import { resolveSpace } from "@/lib/server/space";
 
 export const dynamic = "force-dynamic";
 
@@ -22,14 +23,16 @@ export async function GET(req: NextRequest) {
   }
 
   let supabase;
+  let user;
   try {
-    ({ supabase } = await requireMember());
+    ({ supabase, user } = await requireMember());
   } catch (e) {
     if (e instanceof UnauthorizedError) return new NextResponse("Não autorizado", { status: 401 });
     throw e;
   }
 
-  const period = await loadPeriod(supabase, year, month);
+  const { space, ownerId } = resolveSpace(req.nextUrl.searchParams.get("espaco") ?? undefined, user);
+  const period = await loadPeriod(supabase, year, month, ownerId);
   const input = {
     year,
     month,
@@ -40,7 +43,7 @@ export async function GET(req: NextRequest) {
     incomes: period.incomes,
     expenses: period.expenses,
   };
-  const base = `obolso-${periodo}`;
+  const base = `obolso-${space === "pessoal" ? "pessoal-" : ""}${periodo}`;
   logSecurityEvent("export", { formato, escopo: month === null ? "ano" : "mes" });
 
   const headers = {

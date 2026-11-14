@@ -46,13 +46,19 @@ async function fetchAll<T>(
   }
 }
 
-export async function loadPeriod(supabase: AppSupabaseClient, year: number, month: number | null): Promise<PeriodData> {
+export async function loadPeriod(
+  supabase: AppSupabaseClient,
+  year: number,
+  month: number | null,
+  ownerId: string | null,
+): Promise<PeriodData> {
   const [categories, names] = await Promise.all([loadCategories(supabase), loadMemberNames(supabase)]);
   const keyById = new Map(categories.map((c) => [c.id, c.key]));
 
   const from = month ? `${year}-${String(month).padStart(2, "0")}-01` : `${year}-01-01`;
   const to = month ? from : `${year}-12-01`;
-  const { data: budgets, error } = await supabase.from("monthly_budgets").select("id, month").gte("month", from).lte("month", to);
+  const q = supabase.from("monthly_budgets").select("id, month").gte("month", from).lte("month", to);
+  const { data: budgets, error } = await (ownerId ? q.eq("owner_id", ownerId) : q.is("owner_id", null));
   if (error) throw new DataError("orçamentos");
   const monthById = new Map(budgets.map((b) => [b.id, Number(b.month.slice(5, 7))]));
   const ids = [...monthById.keys()];

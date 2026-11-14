@@ -56,17 +56,19 @@ export async function loadMemberNames(supabase: AppSupabaseClient): Promise<Memb
   };
 }
 
-export async function findBudgetId(supabase: AppSupabaseClient, ref: MonthRef): Promise<string | null> {
-  const { data, error } = await supabase.from("monthly_budgets").select("id").eq("month", monthToDb(ref)).maybeSingle();
+/** ownerId null = espaço da família; ownerId = usuário = espaço pessoal dele. */
+export async function findBudgetId(supabase: AppSupabaseClient, ref: MonthRef, ownerId: string | null): Promise<string | null> {
+  const base = supabase.from("monthly_budgets").select("id").eq("month", monthToDb(ref));
+  const { data, error } = await (ownerId ? base.eq("owner_id", ownerId) : base.is("owner_id", null)).maybeSingle();
   if (error) throw new DataError("orçamento");
   return data?.id ?? null;
 }
 
-export async function loadMonth(supabase: AppSupabaseClient, ref: MonthRef): Promise<MonthData> {
+export async function loadMonth(supabase: AppSupabaseClient, ref: MonthRef, ownerId: string | null): Promise<MonthData> {
   const [categories, names, budgetId] = await Promise.all([
     loadCategories(supabase),
     loadMemberNames(supabase),
-    findBudgetId(supabase, ref),
+    findBudgetId(supabase, ref, ownerId),
   ]);
   const keyById = new Map(categories.map((c) => [c.id, c.key]));
 
@@ -134,7 +136,7 @@ export async function loadMonth(supabase: AppSupabaseClient, ref: MonthRef): Pro
 export async function loadExpense(supabase: AppSupabaseClient, id: string) {
   const { data, error } = await supabase
     .from("expenses")
-    .select("id, budget_id, category_id, description, amount_cents, expense_date, paid_by, payment_method, tags, notes, deleted_at")
+    .select("id, budget_id, category_id, description, amount_cents, expense_date, paid_by, payment_method, tags, notes, deleted_at, owner_id")
     .eq("id", id)
     .maybeSingle();
   if (error) throw new DataError("lançamento");

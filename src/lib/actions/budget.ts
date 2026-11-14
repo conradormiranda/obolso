@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { CATEGORY_KEYS, CATEGORY_SLUG } from "@/lib/domain/categories";
 import { monthToDb, parseMonthParam, type MonthRef } from "@/lib/domain/month";
+import { isPersonal, parseSpace, spaceHref, type Space } from "@/lib/domain/space";
 import { UnauthorizedError, requireMember } from "@/lib/server/auth";
 import { loadCategories } from "@/lib/server/budget-data";
 import { logSecurityEvent } from "@/lib/server/log";
@@ -58,8 +59,17 @@ function refresh() {
   revalidatePath("/", "layout");
 }
 
-async function ensureBudget(supabase: AppSupabaseClient, ref: MonthRef): Promise<string | null> {
-  const { data, error } = await supabase.rpc("create_month_budget", { p_month: monthToDb(ref) });
+/** Espaço vindo do formulário (campo oculto "espaco"); família por padrão. */
+function formSpace(formData: FormData): Space {
+  const v = formData.get("espaco");
+  return parseSpace(typeof v === "string" ? v : null);
+}
+
+async function ensureBudget(supabase: AppSupabaseClient, ref: MonthRef, space: Space): Promise<string | null> {
+  const { data, error } = await supabase.rpc("create_month_budget", {
+    p_month: monthToDb(ref),
+    p_personal: isPersonal(space),
+  });
   return error ? null : data;
 }
 
@@ -72,9 +82,10 @@ export async function createMonthAction(formData: FormData): Promise<void> {
   const parsed = monthParamSchema.safeParse(formData.get("month"));
   const ref = parsed.success ? parseMonthParam(parsed.data) : null;
   if (!ref) redirect("/");
-  await ensureBudget(ctx.supabase, ref);
+  const space = formSpace(formData);
+  await ensureBudget(ctx.supabase, ref, space);
   refresh();
-  redirect(`/?mes=${parsed.data}`);
+  redirect(spaceHref("/", { mes: parsed.data, espaco: space }));
 }
 
 // ---------------------------------------------------------------------------
@@ -91,7 +102,7 @@ export async function saveTargetsAction(_prev: FormState, formData: FormData): P
 
   const ref = parseMonthParam(month.data);
   if (!ref) return { status: "error", message: "Mês inválido." };
-  const budgetId = await ensureBudget(ctx.supabase, ref);
+  const budgetId = await ensureBudget(ctx.supabase, ref, formSpace(formData));
   if (!budgetId) return { status: "error", message: MSG.genericError };
 
   const categories = await loadCategories(ctx.supabase);
@@ -134,7 +145,7 @@ export async function saveIncomeAction(_prev: FormState, formData: FormData): Pr
     if (!data.length) return { status: "error", message: "Renda não encontrada." };
   } else {
     const ref = parseMonthParam(parsed.data.month);
-    const budgetId = ref ? await ensureBudget(ctx.supabase, ref) : null;
+    const budgetId = ref ? await ensureBudget(ctx.supabase, ref, formSpace(formData)) : null;
     if (!budgetId) return { status: "error", message: MSG.genericError };
     const { error } = await ctx.supabase.from("incomes").insert({ ...fields, budget_id: budgetId });
     if (error) return dbError(error.code, incomeEcho);
@@ -204,7 +215,7 @@ export async function saveExpenseAction(_prev: FormState, formData: FormData): P
     if (!data.length) return { status: "error", message: "Lançamento não encontrado." };
   } else {
     const ref = parseMonthParam(parsed.data.month);
-    const budgetId = ref ? await ensureBudget(ctx.supabase, ref) : null;
+    const budgetId = ref ? await ensureBudget(ctx.supabase, ref, formSpace(formData)) : null;
     if (!budgetId) return { status: "error", message: MSG.genericError };
     const { error } = await ctx.supabase.from("expenses").insert({ ...fields, budget_id: budgetId });
     if (error) return dbError(error.code, echo);
@@ -215,7 +226,9 @@ export async function saveExpenseAction(_prev: FormState, formData: FormData): P
   if (formData.get("returnTo") === "stay") {
     return { status: "success", message: id ? "Lançamento atualizado." : "Lançamento adicionado." };
   }
-  redirect(`/categoria/${CATEGORY_SLUG[parsed.data.category]}?mes=${parsed.data.month}`);
+  redirect(
+    spaceHref(`/categoria/${CATEGORY_SLUG[parsed.data.category]}`, { mes: parsed.data.month, espaco: formSpace(formData) }),
+  );
 }
 
 /** Exclusão lógica (restaurável por 30 dias; a tela oferece "Desfazer" por 10 s). */
@@ -295,7 +308,8 @@ export async function saveRecurringAction(_prev: FormState, formData: FormData):
     if (error) return dbError(error.code, echo);
     if (!data.length) return { status: "error", message: "Recorrente não encontrado." };
   } else {
-    const { error } = await ctx.supabase.from("recurring_templates").insert(fields);
+    const owner_id = isPersonal(formSpace(formData)) ? ctx.userId : null;
+    const { error } = await ctx.supabase.from("recurring_templates").insert({ ...fields, owner_id });
     if (error) return dbError(error.code, echo);
   }
   refresh();
@@ -322,7 +336,10 @@ export async function copyPreviousMonthAction(_prev: FormState, formData: FormDa
   const month = monthParamSchema.safeParse(formData.get("month"));
   const ref = month.success ? parseMonthParam(month.data) : null;
   if (!ref) return { status: "error", message: "Mês inválido." };
-  const { data, error } = await ctx.supabase.rpc("copy_previous_month", { p_month: monthToDb(ref) });
+  const { data, error } = await ctx.supabase.rpc("copy_previous_month", {
+    p_month: monthToDb(ref),
+    p_personal: isPersonal(formSpace(formData)),
+  });
   if (error) {
     if (error.code === "P0002") return { status: "error", message: "O mês anterior não tem orçamento." };
     return { status: "error", message: MSG.genericError };

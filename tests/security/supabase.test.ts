@@ -419,6 +419,83 @@ describe.skipIf(!shouldRun)("segurança do banco (Supabase dev)", () => {
   });
 
   // -------------------------------------------------------------------------
+  describe("espaço PESSOAL: um membro não vê nem mexe no pessoal do outro", () => {
+    it("pai cria orçamento pessoal; mãe não lê, não altera, não insere e não vê na auditoria", async () => {
+      const pai = await signInAal2(fx.pai);
+      const month = `${2050 + Math.floor(Math.random() * 40)}-${String(1 + Math.floor(Math.random() * 12)).padStart(2, "0")}-01`;
+      const tag = randomBytes(4).toString("hex");
+
+      const { data: budgetId, error: bErr } = await pai.rpc("create_month_budget", { p_month: month, p_personal: true });
+      expect(bErr).toBeNull();
+      if (!budgetId) throw new Error("sem orçamento pessoal");
+      createdBudgets.push(budgetId);
+
+      const { data: cat } = await pai.from("categories").select("id").eq("key", "prazeres").single();
+      const exp = await pai
+        .from("expenses")
+        .insert({ budget_id: budgetId, category_id: cat?.id ?? "", description: `Segredo ${tag}`, amount_cents: 12345, paid_by: "pai" })
+        .select("id, owner_id")
+        .single();
+      expect(exp.error).toBeNull();
+      expect(exp.data?.owner_id).toBe(fx.pai.id);
+      const inc = await pai.from("incomes").insert({ budget_id: budgetId, description: `Renda ${tag}`, amount_cents: 500000, received_by: "pai" });
+      expect(inc.error).toBeNull();
+      const rec = await pai
+        .from("recurring_templates")
+        .insert({ owner_id: fx.pai.id, category_id: cat?.id ?? "", description: `Rec ${tag}`, amount_cents: 1000, paid_by: "pai", payment_method: "pix", starts_on: "2050-01-01" })
+        .select("id")
+        .single();
+      expect(rec.error).toBeNull();
+
+      // O pai enxerga tudo do próprio pessoal
+      expect((await pai.from("monthly_budgets").select("id").eq("id", budgetId)).data).toHaveLength(1);
+      expect((await pai.from("audit_log").select("id").like("after->>description", `%${tag}`)).data?.length).toBeGreaterThan(0);
+
+      const mae = await signInAal2(fx.mae);
+      // Leitura: nada
+      expect((await mae.from("monthly_budgets").select("id").eq("id", budgetId)).data).toHaveLength(0);
+      expect((await mae.from("expenses").select("id").eq("budget_id", budgetId)).data).toHaveLength(0);
+      expect((await mae.from("incomes").select("id").eq("budget_id", budgetId)).data).toHaveLength(0);
+      expect((await mae.from("category_targets").select("percent_bp").eq("budget_id", budgetId)).data).toHaveLength(0);
+      expect((await mae.from("recurring_templates").select("id").eq("id", rec.data?.id ?? "")).data).toHaveLength(0);
+      expect((await mae.from("audit_log").select("id").like("after->>description", `%${tag}`)).data).toHaveLength(0);
+      expect((await mae.from("audit_log").select("id").eq("owner_id", fx.pai.id)).data).toHaveLength(0);
+
+      // Escrita: nada
+      const upd = await mae.from("expenses").update({ amount_cents: 1 }).eq("id", exp.data?.id ?? "").select("id");
+      expect(upd.data ?? []).toHaveLength(0);
+      const ins = await mae
+        .from("expenses")
+        .insert({ budget_id: budgetId, category_id: cat?.id ?? "", description: "invasão", amount_cents: 100, paid_by: "mae" });
+      expect(ins.error).not.toBeNull();
+      const forgedOwner = await mae
+        .from("recurring_templates")
+        .insert({ owner_id: fx.pai.id, category_id: cat?.id ?? "", description: "forjado", amount_cents: 100, paid_by: "mae", payment_method: "pix", starts_on: "2050-01-01" });
+      expect(forgedOwner.error).not.toBeNull();
+      const delInc = await mae.from("incomes").delete().eq("budget_id", budgetId).select("id");
+      expect(delInc.data ?? []).toHaveLength(0);
+
+      // O pessoal da mãe para o mesmo mês é outro orçamento, só dela
+      const { data: maeBudget } = await mae.rpc("create_month_budget", { p_month: month, p_personal: true });
+      if (maeBudget) createdBudgets.push(maeBudget);
+      expect(maeBudget).not.toBe(budgetId);
+      expect((await pai.from("monthly_budgets").select("id").eq("id", maeBudget ?? "")).data).toHaveLength(0);
+
+      // Família continua visível para os dois
+      const { data: famBudget } = await pai.rpc("create_month_budget", { p_month: month });
+      if (famBudget) createdBudgets.push(famBudget);
+      expect((await mae.from("monthly_budgets").select("id").eq("id", famBudget ?? "")).data).toHaveLength(1);
+      expect(famBudget).not.toBe(budgetId);
+
+      // Dono é imutável
+      const steal = await pai.from("monthly_budgets").update({ owner_id: null } as never).eq("id", budgetId).select("owner_id").single();
+      expect(steal.data?.owner_id).toBe(fx.pai.id);
+
+      await adminClient().from("recurring_templates").delete().eq("id", rec.data?.id ?? "");
+    });
+  });
+
+  // -------------------------------------------------------------------------
   describe("códigos de recuperação do MFA", () => {
     it("código válido remove o autenticador uma única vez; código errado não", async () => {
       const aal2 = await signInAal2(fx.pai);

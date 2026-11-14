@@ -4,20 +4,23 @@ import { todayIso } from "@/lib/domain/month";
 import { requireMember } from "@/lib/server/auth";
 import { loadCategories, loadMemberNames } from "@/lib/server/budget-data";
 import { myRole, payerOptions } from "@/lib/server/form-options";
+import { resolveSpace } from "@/lib/server/space";
 
 export const metadata: Metadata = { title: "Despesas recorrentes" };
 
-export default async function RecurringPage() {
+export default async function RecurringPage({ searchParams }: { searchParams: Promise<{ espaco?: string }> }) {
   const { supabase, user } = await requireMember();
+  const { space, ownerId } = resolveSpace((await searchParams).espaco, user);
+  const templatesQuery = supabase
+    .from("recurring_templates")
+    .select("id, category_id, description, amount_cents, paid_by, payment_method, active, starts_on, ends_on")
+    .order("active", { ascending: false })
+    .order("description");
   const [categories, names, role, templates] = await Promise.all([
     loadCategories(supabase),
     loadMemberNames(supabase),
     myRole(supabase, user),
-    supabase
-      .from("recurring_templates")
-      .select("id, category_id, description, amount_cents, paid_by, payment_method, active, starts_on, ends_on")
-      .order("active", { ascending: false })
-      .order("description"),
+    ownerId ? templatesQuery.eq("owner_id", ownerId) : templatesQuery.is("owner_id", null),
   ]);
   const keyById = new Map(categories.map((c) => [c.id, c.key]));
   const items = (templates.data ?? []).flatMap((t) => {
@@ -42,7 +45,9 @@ export default async function RecurringPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-primary">Despesas recorrentes</h1>
+        <h1 className="text-2xl font-bold text-primary">
+          Despesas recorrentes{space === "pessoal" ? " · pessoal" : ""}
+        </h1>
         <p className="text-sm text-muted-foreground">
           Aluguel, plano de saúde, assinaturas, empréstimos… Os ativos viram lançamentos automaticamente quando um mês novo
           é criado, e podem ser editados naquele mês sem mudar o modelo.

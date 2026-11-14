@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { TriangleAlert } from "lucide-react";
 import { CATEGORY_SLUG } from "@/lib/domain/categories";
+import { spaceHref, type Space } from "@/lib/domain/space";
 import type { Duplicate } from "@/lib/domain/text";
 import type { CategoryKey } from "@/lib/supabase/database.types";
 
@@ -9,10 +10,12 @@ export function DuplicateAlert({
   duplicates,
   names,
   month,
+  espaco,
 }: {
   duplicates: Duplicate[];
   names: Record<CategoryKey, string>;
   month: string;
+  espaco: Space;
 }) {
   if (duplicates.length === 0) return null;
   return (
@@ -28,7 +31,7 @@ export function DuplicateAlert({
             {d.categories.map((c, i) => (
               <span key={c}>
                 {i > 0 ? (i === d.categories.length - 1 ? " e " : ", ") : null}
-                <Link href={`/categoria/${CATEGORY_SLUG[c]}?mes=${month}`} className="underline underline-offset-2">
+                <Link href={spaceHref(`/categoria/${CATEGORY_SLUG[c]}`, { mes: month, espaco })} className="underline underline-offset-2">
                   {names[c]}
                 </Link>
               </span>

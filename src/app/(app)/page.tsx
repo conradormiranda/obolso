@@ -17,11 +17,15 @@ import { findDuplicates } from "@/lib/domain/text";
 import { requireMember } from "@/lib/server/auth";
 import { loadMonth } from "@/lib/server/budget-data";
 import { resolveMonth } from "@/lib/server/month-param";
+import { resolveSpace } from "@/lib/server/space";
+import { spaceHref } from "@/lib/domain/space";
 
-export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ mes?: string }> }) {
-  const { ref, param } = resolveMonth((await searchParams).mes);
-  const { supabase } = await requireMember();
-  const data = await loadMonth(supabase, ref);
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ mes?: string; espaco?: string }> }) {
+  const sp = await searchParams;
+  const { ref, param } = resolveMonth(sp.mes);
+  const { supabase, user } = await requireMember();
+  const { space, ownerId } = resolveSpace(sp.espaco, user);
+  const data = await loadMonth(supabase, ref, ownerId);
 
   const summary = computeSummary({
     incomeCents: data.incomeCents,
@@ -40,18 +44,18 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     <div className="flex flex-wrap items-start gap-2">
       <CopyPreviousMonth month={param} />
       <Link
-        href="/recorrentes"
+        href={spaceHref("/recorrentes", { espaco: space })}
         className="inline-flex h-10 items-center gap-2 rounded-lg border border-border px-3 text-sm font-semibold hover:bg-muted"
       >
         <Repeat className="size-4" aria-hidden="true" /> Recorrentes
       </Link>
       <Link
-        href={`/anual?ano=${ref.year}`}
+        href={spaceHref("/anual", { ano: String(ref.year), espaco: space })}
         className="inline-flex h-10 items-center gap-2 rounded-lg border border-border px-3 text-sm font-semibold hover:bg-muted"
       >
         <CalendarRange className="size-4" aria-hidden="true" /> Visão anual
       </Link>
-      {data.budgetId ? <ExportLinks period={param} label={monthLabel(ref)} /> : null}
+      {data.budgetId ? <ExportLinks period={param} label={monthLabel(ref)} espaco={space} /> : null}
     </div>
   );
 
@@ -59,8 +63,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold md:text-3xl">Orçamento doméstico</h1>
-          <p className="text-sm text-muted-foreground">Distribuição da renda da família em 6 categorias.</p>
+          <h1 className="text-2xl font-bold md:text-3xl">{space === "pessoal" ? "Orçamento pessoal" : "Orçamento doméstico"}</h1>
+          <p className="text-sm text-muted-foreground">
+            {space === "pessoal" ? "Só você vê este orçamento." : "Distribuição da renda da família em 6 categorias."}
+          </p>
         </div>
         <MonthSelector month={param} />
       </div>
@@ -73,6 +79,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           <p className="mb-4">O orçamento de {monthLabel(ref)} ainda não foi criado.</p>
           <form action={createMonthAction}>
             <input type="hidden" name="month" value={param} />
+            <input type="hidden" name="espaco" value={space} />
             <Button type="submit" className="h-11 px-6 text-base font-semibold">
               Criar orçamento de {monthLabel(ref)}
             </Button>
@@ -83,9 +90,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </section>
       ) : (
         <>
-          <DuplicateAlert duplicates={duplicates} names={categoryNames} month={param} />
+          <DuplicateAlert duplicates={duplicates} names={categoryNames} month={param} espaco={space} />
           <Link
-            href={`/renda?mes=${param}`}
+            href={spaceHref("/renda", { mes: param, espaco: space })}
             className="flex items-center justify-between rounded-2xl border border-border bg-card p-5 hover:border-primary/60"
           >
             <span>
@@ -110,7 +117,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               />
             </Panel>
             <Panel title="Resumo">
-              <SummaryTable summary={summary} month={param} />
+              <SummaryTable summary={summary} month={param} espaco={space} />
             </Panel>
             <Panel title="Metas">
               <TargetsCard month={param} rows={summary.rows.map((r) => ({ key: r.key, name: r.name, bp: r.targetBp }))} />

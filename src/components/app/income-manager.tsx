@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
+import { SpaceField } from "./space";
 import { Pencil, Trash2 } from "lucide-react";
 import {
   AlertDialog,
@@ -103,6 +104,7 @@ export function IncomeManager({
       >
         <h2 className="text-lg font-bold text-primary">{current ? "Editar renda" : "Adicionar renda"}</h2>
         <input type="hidden" name="month" value={month} />
+        <SpaceField />
         {current ? <input type="hidden" name="id" value={current.id} /> : null}
         <Field id="income-description" label="Descrição">
           <Input

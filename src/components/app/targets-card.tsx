@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useMemo, useState } from "react";
+import { SpaceField } from "./space";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -64,6 +65,7 @@ export function TargetsCard({ rows, month }: { rows: Row[]; month: string }) {
           </DialogHeader>
           <form action={action} className="space-y-3" noValidate>
             <input type="hidden" name="month" value={month} />
+            <SpaceField />
             {rows.map((r) => (
               <label key={r.key} className="flex items-center justify-between gap-3 text-sm font-medium">
                 <span>{r.name}</span>

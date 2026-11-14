@@ -12,8 +12,10 @@ import { computeSummary } from "@/lib/domain/summary";
 import { requireMember } from "@/lib/server/auth";
 import { loadMonth } from "@/lib/server/budget-data";
 import { resolveMonth } from "@/lib/server/month-param";
+import { resolveSpace } from "@/lib/server/space";
+import { spaceHref } from "@/lib/domain/space";
 
-type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ mes?: string }> };
+type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ mes?: string; espaco?: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const key = categoryFromSlug((await params).slug);
@@ -23,9 +25,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function CategoryPage({ params, searchParams }: Props) {
   const key = categoryFromSlug((await params).slug);
   if (!key) notFound();
-  const { ref, param } = resolveMonth((await searchParams).mes);
-  const { supabase } = await requireMember();
-  const data = await loadMonth(supabase, ref);
+  const sp = await searchParams;
+  const { ref, param } = resolveMonth(sp.mes);
+  const { supabase, user } = await requireMember();
+  const { space, ownerId } = resolveSpace(sp.espaco, user);
+  const data = await loadMonth(supabase, ref, ownerId);
 
   const summary = computeSummary({
     incomeCents: data.incomeCents,
@@ -79,7 +83,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
         <div className="mb-2 flex items-center justify-between">
           <h2 className="text-lg font-bold text-primary">Lançamentos</h2>
           <Link
-            href={`/lancamento/novo?mes=${param}&categoria=${CATEGORY_SLUG[key]}`}
+            href={spaceHref("/lancamento/novo", { mes: param, categoria: CATEGORY_SLUG[key], espaco: space })}
             className="flex h-10 items-center gap-1 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground"
           >
             <Plus className="size-4" aria-hidden="true" /> Adicionar

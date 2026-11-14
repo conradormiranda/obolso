@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { CalendarRange, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CATEGORY_KEYS, CATEGORY_SLUG } from "@/lib/domain/categories";
+import { SPACE_LABEL, parseSpace, spaceHref, type Space } from "@/lib/domain/space";
 import { CATEGORY_LABEL, CategoryIcon } from "./category-icon";
 import { Logo } from "@/components/brand/logo";
 
@@ -12,13 +13,17 @@ import { Logo } from "@/components/brand/logo";
 export function AppHeader() {
   const pathname = usePathname();
   const params = useSearchParams();
-  const mes = params.get("mes");
-  const q = mes && /^\d{4}-\d{2}$/.test(mes) ? `?mes=${mes}` : "";
+  const mesRaw = params.get("mes");
+  const mes = mesRaw && /^\d{4}-\d{2}$/.test(mesRaw) ? mesRaw : null;
+  const espaco = parseSpace(params.get("espaco"));
+  const link = (path: string, space: Space = espaco) => spaceHref(path, { mes, espaco: space });
+  // Telas que têm versão família e pessoal (as demais não mostram a chave).
+  const spaceAware = pathname === "/" || pathname.startsWith("/categoria/") || ["/renda", "/anual", "/recorrentes", "/lancamento/novo"].includes(pathname);
 
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-2 px-4 md:px-6">
-        <Link href={`/${q}`} className="mr-auto text-xl" aria-label="O Bolso, início">
+        <Link href={link("/")} className="mr-auto text-xl" aria-label="O Bolso, início">
           <Logo className="hidden sm:inline-flex" />
           <Logo className="sm:hidden [&>span:last-child]:sr-only" />
         </Link>
@@ -29,7 +34,7 @@ export function AppHeader() {
             return (
               <Link
                 key={key}
-                href={`${href}${q}`}
+                href={link(href)}
                 aria-label={CATEGORY_LABEL[key]}
                 title={CATEGORY_LABEL[key]}
                 aria-current={active ? "page" : undefined}
@@ -44,7 +49,7 @@ export function AppHeader() {
           })}
         </nav>
         <Link
-          href="/anual"
+          href={link("/anual")}
           aria-label="Visão anual"
           title="Visão anual"
           aria-current={pathname === "/anual" ? "page" : undefined}
@@ -68,6 +73,24 @@ export function AppHeader() {
           <UserRound className="size-5" aria-hidden="true" />
         </Link>
       </div>
+      {spaceAware ? (
+        <nav aria-label="Espaço do orçamento" className="mx-auto flex max-w-6xl gap-1 px-4 pb-2 md:px-6">
+          {(["familia", "pessoal"] as const).map((sp) => (
+            <Link
+              key={sp}
+              href={link(pathname, sp)}
+              aria-current={espaco === sp ? "page" : undefined}
+              className={cn(
+                "rounded-full px-4 py-1.5 text-sm font-semibold transition-colors",
+                espaco === sp ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted",
+              )}
+            >
+              {SPACE_LABEL[sp]}
+              {sp === "pessoal" ? <span className="sr-only"> (só você vê)</span> : null}
+            </Link>
+          ))}
+        </nav>
+      ) : null}
     </header>
   );
 }

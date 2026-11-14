@@ -18,7 +18,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
   const [{ data: rows, count }, { data: members }] = await Promise.all([
     supabase
       .from("audit_log")
-      .select("id, table_name, action, actor_id, before, after, at", { count: "exact" })
+      .select("id, table_name, action, actor_id, before, after, at, owner_id", { count: "exact" })
       .order("id", { ascending: false })
       .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1),
     supabase.from("household_members").select("user_id, display_name"),
@@ -44,7 +44,12 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
             return (
               <li key={r.id} className="py-3">
                 <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-                  <p className="font-semibold">{v.title}</p>
+                  <p className="font-semibold">
+                    {v.title}
+                    {r.owner_id ? (
+                      <span className="ml-2 rounded bg-primary/20 px-1.5 text-xs font-normal text-primary">pessoal</span>
+                    ) : null}
+                  </p>
                   <p className="text-xs text-muted-foreground tabular-nums">
                     <time dateTime={r.at}>{dateFmt.format(new Date(r.at))}</time> ·{" "}
                     {r.actor_id ? (nameById.get(r.actor_id) ?? "Usuário removido") : "Sistema"}

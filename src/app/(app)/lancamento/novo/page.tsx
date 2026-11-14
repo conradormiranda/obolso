@@ -8,13 +8,14 @@ import { requireMember } from "@/lib/server/auth";
 import { loadCategories, loadMemberNames } from "@/lib/server/budget-data";
 import { myRole, payerOptions } from "@/lib/server/form-options";
 import { resolveMonth } from "@/lib/server/month-param";
+import { parseSpace, spaceHref } from "@/lib/domain/space";
 
 export const metadata: Metadata = { title: "Novo lançamento" };
 
 export default async function NewExpensePage({
   searchParams,
 }: {
-  searchParams: Promise<{ mes?: string; categoria?: string }>;
+  searchParams: Promise<{ mes?: string; categoria?: string; espaco?: string }>;
 }) {
   const sp = await searchParams;
   const { ref, param } = resolveMonth(sp.mes);
@@ -29,7 +30,7 @@ export default async function NewExpensePage({
   return (
     <div className="mx-auto max-w-md space-y-5">
       <Link
-        href={`/categoria/${CATEGORY_SLUG[category]}?mes=${param}`}
+        href={spaceHref(`/categoria/${CATEGORY_SLUG[category]}`, { mes: param, espaco: parseSpace(sp.espaco) })}
         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="size-4" aria-hidden="true" /> Voltar
