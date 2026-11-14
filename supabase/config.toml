@@ -428,3 +428,23 @@ enabled = true
 # formatted with uppercase keywords, indent 2, max width 180, trailing commas,
 # and column/key alignment. Set to "null" to emit raw, unformatted SQL.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":180,\"commaStyle\":\"trailing\"}"
+
+# ---------------------------------------------------------------------------
+# Produção (obolso, São Paulo): SMTP do Resend e template de recuperação.
+# Aplicado só quando o projeto linkado é o de produção. A chave vem do ambiente.
+# ---------------------------------------------------------------------------
+[remotes.prod]
+project_id = "hmurprzndhsikmsutivm"
+
+[remotes.prod.auth.email.smtp]
+enabled = true
+host = "smtp.resend.com"
+port = 465
+user = "resend"
+pass = "env(RESEND_API_KEY)"
+admin_email = "nao-responda@obolso.com.br"
+sender_name = "O Bolso"
+
+[remotes.prod.auth.email.template.recovery]
+subject = "Redefinir senha do O Bolso"
+content_path = "./supabase/templates/recovery.html"
