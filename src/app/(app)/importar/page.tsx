@@ -13,7 +13,7 @@ import { myRole, payerOptions } from "@/lib/server/form-options";
 import { resolveMonth } from "@/lib/server/month-param";
 import { resolveSpace } from "@/lib/server/space";
 
-export const metadata: Metadata = { title: "Importar fatura" };
+export const metadata: Metadata = { title: "Importar fatura ou extrato" };
 
 export default async function ImportStatementPage({
   searchParams,
@@ -56,9 +56,9 @@ export default async function ImportStatementPage({
       </Link>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-primary">Importar fatura do cartão</h1>
+          <h1 className="text-2xl font-bold text-primary">Importar fatura ou extrato</h1>
           <p className="text-sm text-muted-foreground">
-            As compras entram em {monthLabel(ref)} · {space === "pessoal" ? "Pessoal (só você vê)" : "Família"}.
+            Os lançamentos entram em {monthLabel(ref)} · {space === "pessoal" ? "Pessoal (só você vê)" : "Família"}.
           </p>
         </div>
         <MonthSelector month={param} />
@@ -70,6 +70,7 @@ export default async function ImportStatementPage({
         payers={payerOptions(names)}
         defaultPayer={role}
         history={[...history.entries()]}
+        existingIncomes={month.incomes.map((i) => ({ description: i.description, amountCents: i.amountCents }))}
         existing={month.expenses.map((e) => ({
           date: e.expenseDate,
           description: e.description,

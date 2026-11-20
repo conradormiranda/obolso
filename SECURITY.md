@@ -107,8 +107,9 @@ Este documento registra **cada decisão de segurança** e o motivo dela. Atualiz
 6. **Deploy não espera o CI**: um push que quebre testes ainda é publicado (o CI avisa por e-mail). Mitigação: testes completos antes de cada push e reversão imediata na Vercel ("Promote" do deploy anterior).
 7. **Plano gratuito do Supabase**: o projeto pausa depois de 7 dias sem uso e não tem backup gerenciado. Mitigação: nosso backup diário. Para reativar, basta um clique no painel.
 
-## Importação de fatura do cartão
+## Importação de fatura do cartão e extrato da conta
 
-- O arquivo (OFX/CSV) é lido **no navegador** e nunca é enviado nem guardado. O servidor recebe só as linhas que o usuário confirmou na revisão (data, descrição, valor, seção, tipo de consumo, parcela), revalidadas com Zod (`src/lib/actions/statement.ts`) e gravadas com o cliente do usuário (RLS).
+- Vale para fatura do cartão e extrato da conta corrente. No extrato, o pagamento da fatura do cartão e as linhas de saldo são ignorados (evita contar em dobro); entradas só viram Renda se o usuário marcar.
+- O arquivo (OFX/CSV) é lido **no navegador** e nunca é enviado nem guardado. O servidor recebe só as linhas que o usuário confirmou na revisão (data, descrição, valor, seção, tipo de consumo, forma de pagamento, parcela; e rendas marcadas), revalidadas com Zod (`src/lib/actions/statement.ts`) e gravadas com o cliente do usuário (RLS).
 - Categorização **sem serviços externos**: histórico do próprio household + regras de palavras-chave (`src/lib/domain/consumption.ts`, `src/lib/import/categorize.ts`).
 - Limites: arquivo de até 2 MB, até 300 compras por importação; descrição passa pelo mesmo filtro de texto seguro (sem `<`, `>` ou caracteres de controle).

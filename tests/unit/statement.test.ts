@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildHistory, isLikelyDuplicate, merchantKey, suggestCategory } from "@/lib/import/categorize";
-import { extractInstallment, parseDate, parseSignedCents, parseStatement, StatementError } from "@/lib/import/statement";
+import { extractInstallment, parseDate, parseSignedCents, parseStatement, paymentMethodFromAccount, StatementError } from "@/lib/import/statement";
 
 const OFX = `OFXHEADER:100
 DATA:OFXSGML
@@ -75,10 +75,10 @@ describe("OFX", () => {
   it("lê compras, parcelas e ignora pagamento", () => {
     const r = parseStatement(OFX);
     expect(r.format).toBe("ofx");
-    expect(r.ignoredCredits).toBe(1);
+    expect(r.ignored).toBe(1);
     expect(r.lines).toEqual([
-      { date: "2026-11-05", description: "RESTAURANTE ITAICI", amountCents: 10400, installment: null, externalId: "abc1" },
-      { date: "2026-11-07", description: "MAGAZINE LUIZA", amountCents: 33333, installment: { number: 3, total: 10 }, externalId: "abc2" },
+      { date: "2026-11-05", description: "RESTAURANTE ITAICI", amountCents: 10400, installment: null, paymentMethod: "credito", externalId: "abc1" },
+      { date: "2026-11-07", description: "MAGAZINE LUIZA", amountCents: 33333, installment: { number: 3, total: 10 }, paymentMethod: "credito", externalId: "abc2" },
     ]);
   });
 });
@@ -88,7 +88,7 @@ describe("CSV", () => {
     const csv = "data;lançamento;valor\n05/11/2026;RESTAURANTE CAMARADA;441,50\n06/11/2026;PAGAMENTO FATURA;-2.000,00\n07/11/2026;SHOPEE 02/05;59,90\n";
     const r = parseStatement(csv);
     expect(r.format).toBe("csv");
-    expect(r.ignoredCredits).toBe(1);
+    expect(r.ignored).toBe(1);
     expect(r.lines.map((l) => [l.date, l.description, l.amountCents, l.installment])).toEqual([
       ["2026-11-05", "RESTAURANTE CAMARADA", 44150, null],
       ["2026-11-07", "SHOPEE", 5990, { number: 2, total: 5 }],
@@ -101,7 +101,7 @@ describe("CSV", () => {
       ["Uber *Trip, SP", 2340],
       ["Netflix", 5590],
     ]);
-    expect(r.ignoredCredits).toBe(1);
+    expect(r.ignored).toBe(1);
   });
   it("descrição com marcação é limpa", () => {
     const r = parseStatement("data;descricao;valor\n05/11/2026;<script>LOJA</script>;10,00\n");
@@ -110,6 +110,69 @@ describe("CSV", () => {
   it("erros claros", () => {
     expect(() => parseStatement("qualquer coisa\nsem colunas")).toThrow(StatementError);
     expect(() => parseStatement("data;descricao;valor\n")).toThrow(StatementError);
+  });
+});
+
+const OFX_CONTA = `OFXHEADER:100
+<OFX><BANKMSGSRSV1><STMTTRNRS><STMTRS><BANKACCTFROM><BANKID>0341</BANKACCTFROM><BANKTRANLIST>
+<STMTTRN><TRNTYPE>CREDIT<DTPOSTED>20261105<TRNAMT>12000.00<FITID>c1<MEMO>SALARIO EMPRESA X</STMTTRN>
+<STMTTRN><TRNTYPE>DEBIT<DTPOSTED>20261106<TRNAMT>-3500.00<FITID>c2<MEMO>PIX ENVIADO IMOBILIARIA ALUGUEL</STMTTRN>
+<STMTTRN><TRNTYPE>DEBIT<DTPOSTED>20261107<TRNAMT>-8000.00<FITID>c3<MEMO>PAGTO FATURA CARTAO ITAUCARD</STMTTRN>
+<STMTTRN><TRNTYPE>DEBIT<DTPOSTED>20261108<TRNAMT>-210.55<FITID>c4<MEMO>PAGTO BOLETO ENEL</STMTTRN>
+<STMTTRN><TRNTYPE>DEBIT<DTPOSTED>20261109<TRNAMT>-45.00<FITID>c5<MEMO>COMPRA CARTAO DEB PADARIA REAL</STMTTRN>
+<STMTTRN><TRNTYPE>CREDIT<DTPOSTED>20261110<TRNAMT>300.00<FITID>c6<MEMO>PIX RECEBIDO MARIA</STMTTRN>
+</BANKTRANLIST></STMTRS></STMTTRNRS></BANKMSGSRSV1></OFX>`;
+
+describe("extrato da conta corrente", () => {
+  it("OFX de conta: gastos com forma de pagamento, entradas viram renda, fatura do cartão é ignorada", () => {
+    const r = parseStatement(OFX_CONTA);
+    expect(r.kind).toBe("conta");
+    expect(r.kindDetected).toBe(true);
+    expect(r.cardBillPayments).toBe(1);
+    expect(r.lines.map((l) => [l.description, l.amountCents, l.paymentMethod])).toEqual([
+      ["PIX ENVIADO IMOBILIARIA ALUGUEL", 350000, "pix"],
+      ["PAGTO BOLETO ENEL", 21055, "boleto"],
+      ["COMPRA CARTAO DEB PADARIA REAL", 4500, "debito"],
+    ]);
+    expect(r.incomes).toEqual([
+      { date: "2026-11-05", description: "SALARIO EMPRESA X", amountCents: 1200000, suggested: true },
+      { date: "2026-11-10", description: "PIX RECEBIDO MARIA", amountCents: 30000, suggested: false },
+    ]);
+  });
+  it("CSV Itaú (valor com sinal, coluna de saldo, linhas de saldo ignoradas)", () => {
+    const csv = "data;lançamento;ag./origem;valor (R$);saldos (R$)\n04/11/2026;SALDO ANTERIOR;;;1.000,00\n05/11/2026;PIX TRANSF JOAO;;-150,00;850,00\n05/11/2026;SAQUE 24H;;-100,00;750,00\n06/11/2026;REMUNERACAO/SALARIO;;5.000,00;5.750,00\n06/11/2026;SALDO DO DIA;;;5.750,00\n";
+    const r = parseStatement(csv);
+    expect(r.kind).toBe("conta");
+    expect(r.lines.map((l) => [l.description, l.amountCents, l.paymentMethod])).toEqual([
+      ["PIX TRANSF JOAO", 15000, "pix"],
+      ["SAQUE 24H", 10000, "dinheiro"],
+    ]);
+    expect(r.incomes.map((i) => [i.description, i.amountCents, i.suggested])).toEqual([["REMUNERACAO/SALARIO", 500000, true]]);
+  });
+  it("CSV Bradesco (colunas Crédito e Débito separadas)", () => {
+    const csv = "Extrato de: Agência: 1234 Conta: 5678\nData;Lançamento;Dcto.;Crédito (R$);Débito (R$);Saldo (R$)\n05/11/2026;PAGTO ELETRON COBRANCA SABESP;123;;98,70;1.901,30\n06/11/2026;TRANSF SALDO C/SAL P/CC;;4.000,00;;5.901,30\n07/11/2026;CARTAO CREDITO BRADESCARD;;;2.500,00;3.401,30\n";
+    const r = parseStatement(csv);
+    expect(r.kind).toBe("conta");
+    expect(r.kindDetected).toBe(true);
+    expect(r.lines.map((l) => [l.description, l.amountCents, l.paymentMethod])).toEqual([["PAGTO ELETRON COBRANCA SABESP", 9870, "boleto"]]);
+    expect(r.incomes.map((i) => [i.amountCents, i.suggested])).toEqual([[400000, true]]);
+    expect(r.cardBillPayments).toBe(1);
+  });
+  it("o usuário pode dizer que o arquivo é fatura (ou extrato)", () => {
+    const csv = "data;descricao;valor\n05/11/2026;LOJA A;-10,00\n06/11/2026;LOJA B;-20,00\n";
+    expect(parseStatement(csv).kind).toBe("cartao");
+    expect(parseStatement(csv, "conta").kind).toBe("conta");
+    expect(parseStatement(csv, "conta").lines).toHaveLength(2);
+  });
+  it.each([
+    ["PIX ENVIADO FULANO", "pix"],
+    ["PAGTO BOLETO", "boleto"],
+    ["DEBITO AUTOMATICO VIVO", "boleto"],
+    ["SAQUE BANCO24H", "dinheiro"],
+    ["TED 237 JOAO", "pix"],
+    ["COMPRA ELO DEBITO", "debito"],
+  ])("forma de pagamento: %s → %s", (d, m) => {
+    expect(paymentMethodFromAccount(d)).toBe(m);
   });
 });
 

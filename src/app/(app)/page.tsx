@@ -48,7 +48,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         href={spaceHref("/importar", { mes: param, espaco: space })}
         className="inline-flex h-10 items-center gap-2 rounded-lg border border-border px-3 text-sm font-semibold hover:bg-muted"
       >
-        <CreditCard className="size-4" aria-hidden="true" /> Importar fatura do cartão
+        <CreditCard className="size-4" aria-hidden="true" /> Importar fatura ou extrato
       </Link>
       <ImportPreviousMonth month={param} />
       <CopyPreviousMonth month={param} />

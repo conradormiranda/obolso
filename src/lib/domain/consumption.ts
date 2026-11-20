@@ -67,7 +67,7 @@ const RULES: [RegExp, ConsumptionKey][] = [
   [/\b(cinema|cinemark|kinoplex|uci|ingresso|ingressos|sympla|eventim|ticket|tickets|show|teatro|museu|parque|clube|jogo|steam|playstation|psn|xbox|nintendo|boliche|karaoke)\b/, "lazer"],
   [/\b(viagem|viagens|hotel|hoteis|pousada|resort|hostel|airbnb|booking|expedia|decolar|hurb|latam|gol|azul|tap|american airlines|cvc|smiles|livelo|rodoviaria|aeroporto|duty free|seguro viagem)\b/, "viagem"],
   [/\b(udemy|coursera|alura|hotmart|eduzz|kiwify|livraria|livros|kindle|saraiva|cultura|escola|colegio|curso|cursos|faculdade|universidade|ingles|idiomas|duolingo|domestika|masterclass|papelaria|kalunga)\b/, "educacao"],
-  [/\b(corretora|xp investimentos|btg pactual invest|rico|clear|nuinvest|tesouro direto|previdencia|investimento|investimentos|cdb)\b/, "investimentos"],
+  [/\b(corretora|xp investimentos|btg pactual invest|rico|clear|nuinvest|tesouro direto|previdencia|investimento|investimentos|cdb|lci|lca|aplicacao|aplic|poupanca|fundo de investimento|fundos)\b/, "investimentos"],
   [/\b(zara|renner|riachuelo|cea|c a|hering|marisa|shein|nike|adidas|centauro|decathlon|netshoes|dafiti|arezzo|mercado livre|mercadolivre|shopee|aliexpress|amazon|amzn|magalu|magazine luiza|americanas|casas bahia|fast shop|kabum|ponto frio|shopping|loja|lojas|calcados|roupas|joalheria|vivara|pandora|presente)\b/, "compras"],
   [/\b(contabilizei|contador|advogado|cartorio|correios|lavanderia|chaveiro|conserto|assistencia tecnica|despachante|anuidade|tarifa|iof|juros|encargos)\b/, "servicos"],
 ];

@@ -40,11 +40,11 @@ test.describe("importar fatura do cartão", () => {
     if (!fx) return;
     await loginWithFreshMfa(page, fx.pai);
     await page.goto(`/importar?mes=${M}`);
-    await expect(page.getByRole("heading", { name: "Importar fatura do cartão" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Importar fatura ou extrato" })).toBeVisible();
 
     const file = { name: "fatura.csv", mimeType: "text/csv", buffer: Buffer.from(csv, "latin1") };
     await page.locator("#statement-file").setInputFiles(file);
-    await expect(page.getByText("4 compras encontradas · 1 pagamento(s)/estorno(s) ignorado(s)")).toBeVisible();
+    await expect(page.getByText("4 gastos · 1 ignorado(s)")).toBeVisible();
 
     // Sugestões por regra: tipo de consumo + seção.
     await expect(page.getByLabel(`Tipo de consumo de ${TAG} BAR DO ZE`)).toHaveValue("bares_restaurantes");
@@ -54,13 +54,13 @@ test.describe("importar fatura do cartão", () => {
     await expect(page.getByText("2/6")).toBeVisible();
 
     // Desconhecido: precisa escolher a seção.
-    await expect(page.getByText("Escolha a seção de 2 compras marcadas.")).toBeVisible();
+    await expect(page.getByText("Escolha a seção de 2 gastos marcados.")).toBeVisible();
     await page.getByLabel(`Tipo de consumo de ${TAG} SOFA`).selectOption("casa");
     await expect(page.getByLabel(`Seção de ${TAG} SOFA`)).toHaveValue("conforto");
     await page.getByLabel(`Seção de ${TAG} XPTO LTDA`).selectOption("conforto");
 
     await page.getByRole("button", { name: /Salvar 4 lançamentos/ }).click();
-    await expect(page.getByText("4 lançamentos salvos.")).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText("Salvo: 4 lançamentos.")).toBeVisible({ timeout: 20_000 });
 
     // Entrou na seção certa, com o tipo de consumo e a parcela.
     await page.goto(`/categoria/prazeres?mes=${M}`);
@@ -79,5 +79,30 @@ test.describe("importar fatura do cartão", () => {
     await page.locator("#statement-file").setInputFiles(file);
     await expect(page.getByText("parece já lançado neste mês")).toHaveCount(4);
     await expect(page.getByRole("button", { name: /Salvar 0 lançamentos/ })).toBeDisabled();
+  });
+
+  test("extrato da conta (OFX): gastos com Pix/boleto, salário vira renda, fatura do cartão ignorada", async ({ page }) => {
+    if (!fx) return;
+    const ofx = `OFXHEADER:100
+<OFX><BANKMSGSRSV1><STMTTRNRS><STMTRS><BANKACCTFROM><BANKID>0341</BANKACCTFROM><BANKTRANLIST>
+<STMTTRN><DTPOSTED>${M.replace("-", "")}05<TRNAMT>9876.54<FITID>a<MEMO>SALARIO ${TAG}</STMTTRN>
+<STMTTRN><DTPOSTED>${M.replace("-", "")}06<TRNAMT>-210.55<FITID>b<MEMO>PAGTO BOLETO ENEL ${TAG}</STMTTRN>
+<STMTTRN><DTPOSTED>${M.replace("-", "")}07<TRNAMT>-5000.00<FITID>c<MEMO>PAGTO FATURA CARTAO</STMTTRN>
+<STMTTRN><DTPOSTED>${M.replace("-", "")}08<TRNAMT>150.00<FITID>d<MEMO>PIX RECEBIDO ${TAG}</STMTTRN>
+</BANKTRANLIST></STMTRS></STMTTRNRS></BANKMSGSRSV1></OFX>`;
+    await loginWithFreshMfa(page, fx.pai);
+    await page.goto(`/importar?mes=${M}`);
+    await page.locator("#statement-file").setInputFiles({ name: "extrato.ofx", mimeType: "application/x-ofx", buffer: Buffer.from(ofx) });
+    await expect(page.getByRole("radio", { name: "Extrato da conta" })).toBeChecked();
+    await expect(page.getByText("O pagamento da fatura do cartão não entra como gasto")).toBeVisible();
+    await expect(page.getByLabel(`Tipo de consumo de PAGTO BOLETO ENEL ${TAG}`)).toHaveValue("moradia_contas");
+    await expect(page.getByText("Boleto").first()).toBeVisible();
+    await expect(page.getByLabel(`Lançar como renda SALARIO ${TAG}`)).toBeChecked();
+    await expect(page.getByLabel(`Lançar como renda PIX RECEBIDO ${TAG}`)).not.toBeChecked();
+
+    await page.getByRole("button", { name: /Salvar 1 lançamento .* e 1 renda/ }).click();
+    await expect(page.getByText("Salvo: 1 lançamento e 1 renda.")).toBeVisible({ timeout: 20_000 });
+    await page.goto(`/renda?mes=${M}`);
+    await expect(page.getByText(`SALARIO ${TAG}`)).toBeVisible();
   });
 });
